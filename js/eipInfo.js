@@ -36,8 +36,8 @@ let yamlEngine = (str) => {
 // Helpers
 
 function getEipNumber(file) {
+    if (!file.startsWith('EIPS/')) return null; // Ignore non-EIP files
     let eip = file.match(/(?<=eip-)\w+(?=(?:.\w+)$)/gi)?.pop();
-    if (eip == 'template') return null; // Ignore EIP template
     return eip;
 }
 
