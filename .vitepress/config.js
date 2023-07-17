@@ -172,70 +172,49 @@ export default withPwa(defineConfig({
     async buildEnd(siteConfig) {
         logger.info('Making feeds');
 
-        const url = 'https://eips.ethereum.org';
+        const url = 'https://eip.info';
 
-        try {
-            const feed = new Feed({
-                title: feedConfig[feedName].title,
-                description: feedConfig[feedName].description,
-                id: `${url}/rss/${feedName}.xml`,
-                link: `${url}/rss/${feedName}.xml`,
-                language: 'en',
-                image: `${url}/img/favicon-32x32.png`,
-                favicon: `${url}/favicon.ico`,
-                copyright: 'CC0 1.0 Universal (Public Domain)',
-            });
+        const feed = new Feed({
+            title: siteConfig.site.title,
+            description: siteConfig.site.description,
+            link: `${url}/eips.atom`,
+            language: 'en',
+            image: `${url}/img/favicon-32x32.png`,
+            favicon: `${url}/favicon.ico`,
+            copyright: 'CC0 1.0 Universal (Public Domain)',
+        });
 
-            for (let eip in config.eips) {
-                let eipData = config.eips[eip];
+        for (let eip in config.eips) {
+            let fm = config.eips[eip].data;
 
-                let skip = false;
-
-                for (let key of Object.keys(filter)) {
-                    if (filter[key] && !filter[key](eipData[key])) {
-                        skip = true;
-                        break;
+            feed.addItem({
+                title: fm.title,
+                id: `${url}/EIPS/eip-${eip}`,
+                link: `${url}/EIPS/eip-${eip}`,
+                date: fm.lastStatusChange,
+                description: fm.description,
+                author: fm.authors.map(author => author.name),
+                category: [
+                    {
+                        name: fm.category ?? fm.type,
+                        term: fm.category ?? fm.type,
+                        scheme: `${url}/category`,
+                        domain: `${url}/category`
+                    },
+                    {
+                        name: fm.status,
+                        term: fm.status,
+                        scheme: `${url}/status`,
+                        domain: `${url}/status`
                     }
-                }
-
-                if (skip) {
-                    continue;
-                }
-                feed.addItem({
-                    title: eipData.title,
-                    id: `${url}/EIPS/eip-${eip}`,
-                    link: `${url}/EIPS/eip-${eip}`,
-                    date: eipData.lastStatusChange,
-                    description: eipData.description,
-                    author: parseAuthorData(eipData.authors).map(author => author.name),
-                    category: [
-                        {
-                            name: eipData.category ?? eipData.type,
-                            term: eipData.category ?? eipData.type,
-                            scheme: `${url}/category`,
-                            domain: `${url}/category`
-                        },
-                        {
-                            name: eipData.status,
-                            term: eipData.status,
-                            scheme: `${url}/status`,
-                            domain: `${url}/status`
-                        }
-                    ],
-                    content: eipData.content,
-                    guid: eip,
-                });
-            }
-
-            // Export the feed
-            await fs.writeFile(`./.vitepress/dist/eips-rss.xml`, feed.rss2());
-            await fs.writeFile(`./.vitepress/dist/eips.atom`, feed.atom1());
-
-            logger.info(`Finished making \`${feedName}\` feed`);
-        } catch (e) {
-            logger.error(e);
-            throw e;
+                ],
+                content: config.eips[eip].content,
+                guid: eip,
+            });
         }
+
+        // Export the feed
+        await fs.writeFile(`./.vitepress/dist/eips.atom`, feed.atom1());
     },
     pwa: {
         injectRegister: 'script',

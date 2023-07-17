@@ -2,6 +2,8 @@ import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
 import Git from 'nodegit';
 
+import fs from 'fs';
+
 // Generate js-yaml engine that will never throw an error
 
 let yamlEngine = (str) => {
@@ -81,7 +83,10 @@ let commit = await repo.getHeadCommit();
 
 // Walk it back
 while (commit) {
+    console.log(commit.sha());
+    console.log(commit.message());
     try {
+        console.log("DEBUG 1")
         // Get the changes made in this commit
         let diffs = await commit.getDiff();
         let patches = [];
@@ -89,6 +94,7 @@ while (commit) {
             patches.push(...(await diff.patches()));
         }
 
+        console.log("DEBUG 2")
         // Alias management
         // If 1 delete and 1 add, add an alias from the deleted file to the added file
         // If rename, add an alias from the old file to the new file
@@ -101,8 +107,9 @@ while (commit) {
             // Make sure they are both EIPs!
             if (getEipNumber(added[0].newFile().path()) && getEipNumber(deleted[0].oldFile().path())) {
                 // Make a fake patch that "renames" the deleted file to the added file
+                let theOldFile = deleted[0].oldFile();
                 let patch = added[0];
-                patch.oldFile = () => deleted[0].oldFile();
+                patch.oldFile = () => theOldFile;
                 patch.isRenamed = () => true;
                 patch.isModified = () => true;
                 patch.isAdded = () => false;
@@ -113,19 +120,17 @@ while (commit) {
                 deleted = [];
             }
         }
-        if (deleted > 0) {
-            for (let patch of deleted) {
-                let oldEip = getEipNumber(patch.newFile().path());
-                if (!(oldEip in aliases)) aliases[oldEip] = null;
-            }
+        for (let patch of deleted) {
+            let oldEip = getEipNumber(patch.newFile().path());
+            if (!(oldEip in aliases)) aliases[oldEip] = null;
         }
-        if (renamed > 0) {
-            for (let patch of renamed) {
-                let oldEip = getEipNumber(patch.oldFile().path());
-                let newEip = getEipNumber(patch.newFile().path());
-                if (!(oldEip in aliases)) aliases[oldEip] = newEip;
-            }
+        for (let patch of renamed) {
+            let oldEip = getEipNumber(patch.oldFile().path());
+            let newEip = getEipNumber(patch.newFile().path());
+            if (oldEip == newEip) continue; // Ignore renames that don't change the EIP number, if this ever happens
+            if (!(oldEip in aliases)) aliases[oldEip] = newEip;
         }
+        console.log("DEBUG 3")
         // If an EIP is added or modified, and does not have an alias, initialize its gray matter data, and add necessary fields
         for (let patch of added.concat(modified)) {
             let eip = getEipNumber(patch.newFile().path());
@@ -156,6 +161,7 @@ while (commit) {
             }
         }
 
+        console.log("DEBUG 4")
         // Add-only cases
         for (let patch of added) {
             let eip = getEipNumber(patch.newFile().path());
@@ -186,6 +192,7 @@ while (commit) {
                 eipInfo[eip].data = data;
             }
         }
+        console.log("DEBUG 5")
 
         // Modify-only cases
         for (let patch of modified) {
@@ -236,16 +243,12 @@ while (commit) {
 
         // Get list of changed files
         let diffs = await commit.getDiff();
-        let patches = [];
         for (let diff of diffs) {
-            patches.push(...(await diff.patches()));
-        }
-        let changedFiles = patches.map(patch => patch.newFile().path());
-        changedFiles.push(...patches.map(patch => patch.oldFile().path()));
-        changedFiles = [...new Set(changedFiles)];
-        console.error(`Changed files:`);
-        for (let file of changedFiles) {
-            console.error(`  ${file}`);
+            for (let patch of await diff.patches()) {
+                console.error(`New File: ${patch.newFile()?.path()}`);
+                console.error(`Old File: ${patch.oldFile()?.path()}`);
+                console.error(`Type: ${patch.isAdded() ? 'Added' : patch.isDeleted() ? 'Deleted' : patch.isRenamed() ? 'Renamed' : patch.isCopied() ? 'Copied' : patch.isModified() ? 'Modified' : 'Unknown'}`);
+            }
         }
 
         // Re-throw
@@ -257,8 +260,21 @@ while (commit) {
 }
 
 // Remove aliased EIPs
+// TODO: They should never have been added in the first place
 for (let eip in aliases) {
     delete eipInfo[eip];
+}
+
+// Make sure every EIP has a file
+// TODO: Remove this once all EIPs have been added
+for (let eip in eipInfo) {
+    let filename = `EIPs/EIPS/eip-${eip}.md`;
+    if (!(fs.existsSync(filename))) {
+        console.error(`EIP ${eip} has no file!`);
+        console.error(`  ${filename}`);
+        console.error(JSON.stringify(eipInfo[eip].data, null, 2));
+        process.exit(1);
+    }
 }
 
 // Now make the necessary transformations
