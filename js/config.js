@@ -1,4 +1,4 @@
-import eips from './eips.js';
+import eipInfo from './eipInfo.js';
 
 export default {
     "statuses": [
@@ -17,5 +17,5 @@ export default {
             "Networking",
         ],
     },
-    "eips": eips,
+    "eips": eipInfo,
 };

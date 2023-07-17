@@ -21,6 +21,7 @@ node_modules
 .vitepress/.temp
 vite.config.js.*
 .vitepress/config.js.*
+**/*.paths.js.*
 
 # VSCode
 .vscode

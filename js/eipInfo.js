@@ -109,7 +109,7 @@ while (commit) {
         // If an EIP is added or modified, and does not have an alias, initialize its gray matter data, and add necessary fields
         for (let patch of added.concat(modified)) {
             let eip = getEipNumber(patch.newFile().path());
-            if (!(eip in aliases) && !(eip in eipInfo)) {
+            if (eip && !(eip in aliases) && !(eip in eipInfo)) {
                 // Read the file's contents
                 let objectId = patch.newFile().id();
                 let blob = await repo.getBlob(objectId);
@@ -138,8 +138,8 @@ while (commit) {
         // Add-only cases
         for (let patch of added) {
             let eip = getEipNumber(patch.newFile().path());
-            while (aliases[eip]) eip = aliases[eip];
-            if (eip in eipInfo) {
+            while (eip in aliases) eip = aliases[eip];
+            if (eip && eip in eipInfo) {
                 // Read the file's contents
                 let objectId = patch.newFile().id();
                 let blob = await repo.getBlob(objectId);
@@ -168,8 +168,8 @@ while (commit) {
         // Modify-only cases
         for (let patch of modified) {
             let eip = getEipNumber(patch.newFile().path());
-            while (aliases[eip]) eip = aliases[eip];
-            if (eip in eipInfo) {
+            while (eip in aliases) eip = aliases[eip];
+            if (eip && eip in eipInfo) {
                 // Read both files' contents
                 let objectIdNew = patch.newFile().id();
                 let blobNew = await repo.getBlob(objectIdNew);
@@ -260,3 +260,5 @@ for (let eip in eipInfo) {
 }
 
 export default eipInfo;
+
+console.log(eipInfo);

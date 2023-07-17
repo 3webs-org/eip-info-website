@@ -6,7 +6,7 @@ export default {
     paths() {
         let paths = [];
 
-        for (let eip in config.eips) {
+        for (let eip of config.eips) {
             paths.push({
                 params: {
                     eip: eip.data.eip
