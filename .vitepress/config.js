@@ -39,27 +39,27 @@ async function copyDirectory(from, to) {
 }
 
 export default withPwa(defineConfig({
+    srcDir: './src',
     title: 'Ethereum Improvement Proposals',
     description: 'Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.',
     cleanUrls: true,
     base: '/',
     themeConfig: {
-        logo: '/assets/website/ethereum-logo.svg',
+        logo: '/img/ethereum-logo.svg',
         outline: 'deep',
-        editLink: {
-          pattern: 'https://github.com/ethereum/EIPs/edit/main/docs/:path',
-          text: 'Edit this page on GitHub'
-        },
         lastUpdatedText: 'Last Updated',
         nav: [
-            { text: 'All', link: '/all' },
-            { text: 'Core', link: '/core' },
-            { text: 'Networking', link: '/networking' },
-            { text: 'Interface', link: '/interface' },
-            { text: 'ERC', link: '/erc' },
-            { text: 'Meta', link: '/meta' },
-            { text: 'Informational', link: '/informational' }
+            { text: 'All', link: '/listing/all' },
+            { text: 'Core', link: '/listing/core' },
+            { text: 'Networking', link: '/listing/networking' },
+            { text: 'Interface', link: '/listing/interface' },
+            { text: 'ERC', link: '/listing/erc' },
+            { text: 'Meta', link: '/listing/meta' },
+            { text: 'Informational', link: '/listing/informational' }
         ],
+        search: {
+          provider: 'local'
+        },
     },
     head: [
         [ 'meta', { charset: 'utf-8' } ],
@@ -68,15 +68,15 @@ export default withPwa(defineConfig({
         [ 'meta', { name: 'Content-Type', content: 'text/html; charset=utf-8' } ],
         [ 'meta', { name: 'robots', content: 'index, follow' } ],
         [ 'meta', { name: 'google-site-verification', content: 'WS13rn9--86Zk6QAyoGH7WROxbaJWafZdaPlecJVGSo' } ], // Gives @Pandapip1 limited access (analytics & re-indexing) to Google Search Console; access can be revoked at any time by removing this line
-        [ 'link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/assets/website/apple-touch-icon.png' } ],
-        [ 'link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/assets/website/favicon-32x32.png' } ],
-        [ 'link', { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/assets/website/favicon-16x16.png' } ],
-        [ 'link', { rel: 'mask-icon', href: '/assets/website/safari-pinned-tab.svg', color: '#5bbad5' } ],
-        [ 'link', { rel: 'shortcut icon', href: '/assets/website/favicon.ico' } ],
+        [ 'link', { rel: 'apple-touch-icon', sizes: '180x180', href: '/img/apple-touch-icon.png' } ],
+        [ 'link', { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/img/favicon-32x32.png' } ],
+        [ 'link', { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/img/favicon-16x16.png' } ],
+        [ 'link', { rel: 'mask-icon', href: '/img/safari-pinned-tab.svg', color: '#5bbad5' } ],
+        [ 'link', { rel: 'shortcut icon', href: '/favicon.ico' } ],
         [ 'meta', { name: 'apple-mobile-web-app-title', content: 'Ethereum Improvement Proposals' } ],
         [ 'meta', { name: 'application-name', content: 'Ethereum Improvement Proposals' } ],
         [ 'meta', { name: 'msapplication-TileColor', content: '#da532c' } ],
-        [ 'meta', { name: 'msapplication-config', content: '/assets/website/browserconfig.xml' } ],
+        [ 'meta', { name: 'msapplication-config', content: '/browserconfig.xml' } ],
         [ 'meta', { name: 'theme-color', content: '#ffffff' } ]
     ],
     appearance: true,
@@ -84,7 +84,7 @@ export default withPwa(defineConfig({
     lastUpdated: true,
     async transformHead({ siteConfig, siteData, pageData, title, description, head, content }) {
         try { // Custom error handling needed because of the way VitePress handles errors (i.e. it doesn't)
-            if (pageData.relativePath.match(/EIPS\/eip-\w+\.md/)) {
+            if (pageData.relativePath.match(/eip\/\w+\.md/)) {
                 logger.info(`Generating Metadata for ${pageData.relativePath}`);
                 
                 let eipN = await filenameToEipNumber(pageData.relativePath);
@@ -224,7 +224,7 @@ export default withPwa(defineConfig({
                 id: `${url}/rss/${feedName}.xml`,
                 link: `${url}/rss/${feedName}.xml`,
                 language: 'en',
-                image: `${url}/assets/website/favicon-32x32.png`,
+                image: `${url}/img/favicon-32x32.png`,
                 favicon: `${url}/favicon.ico`,
                 copyright: 'CC0 1.0 Universal (Public Domain)',
             });
@@ -279,15 +279,11 @@ export default withPwa(defineConfig({
             logger.error(e);
             throw e;
         }
-
-        // Copy ALL the assets
-        logger.info('Copying assets');
-        await copyDirectory('./assets', './.vitepress/dist/assets');
     },
     pwa: {
         injectRegister: 'script',
         workbox: {
-            globPatterns: ['EIPS/*', '**/*.{js,css,html}'] // Items to save to offline cache
+            globPatterns: [] // Items to save to offline cache
         },
         manifest: {
             "name": "Ethereum Improvement Proposals",
@@ -295,12 +291,12 @@ export default withPwa(defineConfig({
             "description": "Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.",
             "icons": [
                 {
-                    "src": "/assets/website/android-chrome-192x192.png",
+                    "src": "/img/android-chrome-192x192.png",
                     "sizes": "192x192",
                     "type": "image/png"
                 },
                 {
-                    "src": "/assets/website/android-chrome-512x512.png",
+                    "src": "/img/android-chrome-512x512.png",
                     "sizes": "512x512",
                     "type": "image/png"
                 }
@@ -309,5 +305,6 @@ export default withPwa(defineConfig({
             "background_color": "#ffffff",
             "display": "standalone"
         }
-    }
+    },
+    mpa: true
 }));

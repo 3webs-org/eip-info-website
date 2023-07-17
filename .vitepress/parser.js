@@ -1,39 +1,115 @@
 import fs from 'node:fs/promises';
 
 import yaml from 'js-yaml';
-import simpleGit from 'simple-git';
 import grayMatter from 'gray-matter';
 
-const git = simpleGit();
+import Git from 'nodegit';
+
+import { tmpdir } from 'node:os';
+import uuid from 'uuid';
+
+import config from '../config.js'
+
+let temporary = tmpdir() + "/" + uuid.v1() + '/EIPs';
+console.log(`Cloning ${config.git} to ${temporary}`);
+let repo = await Git.Clone(config.git, temporary);
+console.log(`Cloned ${config.git} to ${temporary}`);
+
+function getEipNumber(file) {
+    return file.match(/(?<=eip-)\w+$/gi).pop();
+}
+
+let eipInfo = {}; // EIP "number" => gray-matter data and content
+let aliases = {}; // Alias => EIP "number"
+
+let commit = await repo.getHeadCommit();
+console.log(commit.message())
+console.log(await Promise.all(((await (await repo.getHeadCommit()).getDiff()).map(async diff => (await diff.patches()).map(async patch => {
+    return {
+        oldFile: patch.oldFile(),
+        newFile: patch.newFile(),
+        added: patch.isAdded(),
+        deleted: patch.isDeleted(),
+        modified: patch.isModified(),
+        renamed: patch.isRenamed(),
+    }
+})))))
+
+// Walk it back
+while (commit) {
+    // Get the changes made in this commit
+    let diffs = await commit.getDiff();
+    for (let diff of diffs) {
+        let patches = await diff.patches();
+        // Alias management
+        // If 1 delete and 1 add, add an alias from the deleted file to the added file
+        // If rename, add an alias from the old file to the new file
+        // If delete, add an alias to null
+        let added = patches.filter(patch => patch.isAdded());
+        let deleted = patches.filter(patch => patch.isDeleted());
+        let renamed = patches.filter(patch => patch.isRenamed());
+        if (added.length == 1 && deleted.length == 1) {
+            let oldEip = getEipNumber(deleted[0].newFile().path());
+            let newEip = getEipNumber(added[0].newFile().path());
+            aliases[oldEip] = newEip;
+        } else {
+            if (deleted > 0) {
+                for (let patch of deleted) {
+                    let oldEip = getEipNumber(patch.newFile().path());
+                    aliases[oldEip] = null;
+                }
+            }
+            if (renamed > 0) {
+                for (let patch of renamed) {
+                    let oldEip = getEipNumber(patch.oldFile().path());
+                    let newEip = getEipNumber(patch.newFile().path());
+                    aliases[oldEip] = newEip;
+                }
+            }
+        }
+        // For every added EIP
+    }
+
+    // Walk through the commit's parents
+    commit = await commit.getParents().then(parents => parents[0]);
+}
+
 
 export async function fetchEips() {
-    let eipsDir = await fs.readdir('./EIPS/');
+    let eipsDir = await fs.readdir('./EIPs/EIPS');
     let eipsUnsorted = await Promise.all(eipsDir.map(getEipTransformedPremable));
     return eipsUnsorted.sort(sortEips);
 }
 
 export async function getEipTransformedPremable(file) {
+    let eipFile = await fs.readFile(`./EIPs/EIPS/${file}`, 'utf-8');
     try {
-        let eipContent = await fs.readFile(`./EIPS/${file}`, 'utf-8');
+        let eipContent = await fs.readFile(`./EIPs/EIPS/${file}`, 'utf-8');
         let eipData = (grayMatter(eipContent)).data;
-
-        let { created, lastStatusChange } = await getGitData(`EIPS/${file}`);
         
         let newEipData = { ...eipData };
 
-        newEipData.eip = await filenameToEipNumber(`EIPS/${file}`);
+        newEipData.eip = await filenameToEipNumber(file);
 
-        newEipData.title = `${eipData.category === 'ERC' ? 'ERC' : 'EIP'}-${eipData.eip}: ${eipData.title}`;
-        newEipData.wrongTitle = `${eipData.category === 'ERC' ? 'EIP' : 'ERC'}-${eipData.eip} ${eipData.title}`; // Since some people search using the wrong prefix, make sure that the wrong prefix is also searchable
-        newEipData.onlyTitle = eipData.title;
-        
+        if (!newEipData.created) {
+            newEipData.created = await getCreatedDate(`EIPs/EIPS/${file}`);
+        }
+
+        if (!newEipData.lastStatusChange) {
+            newEipData.lastStatusChange = await getLatestStatusChange(`EIPs/EIPS/${file}`);
+        }
+
+        if (!newEipData.finalized) {
+            newEipData.finalized = newEipData.lastStatusChange;
+        }
+
         newEipData.authorData = await parseAuthorData(eipData.author);
 
         newEipData.lastStatusChange = formatDateString(lastStatusChange);
         newEipData.created = formatDateString(created);
         newEipData.relativePath = `EIPS/${file}`;
 
-        newEipData.link = `/EIPS/eip-${newEipData.eip}`;
+        newEipData.link = `/EIPs/EIPS/eip-${newEipData.eip}`;
 
         newEipData.createdSlashSeperated = formatDateStringSlashSeperated(created);
 
@@ -54,8 +130,7 @@ export async function getEipTransformedPremable(file) {
 }
 
 export async function filenameToEipNumber(filename) {
-    if (!filename || !filename.match(/(?<=^EIPS\/eip-)[\w_]+(?=.md)/)?.[0]) return false;
-    return filename.match(/(?<=^EIPS\/eip-)[\w_]+(?=.md)/)?.[0];
+    return filename.toLowerCase().match(/(?<=eip-)\d+/g).pop();
 }
 
 export async function parseAuthorData(authorData) {
@@ -83,19 +158,16 @@ export async function parseAuthorData(authorData) {
     return authors;
 }
 
-export async function getGitData(relativePath) {
+export async function getCreatedDate(relativePath) {
     let gitLogAdded = await git.log(['--diff-filter=A', '--', relativePath]);
-    let addedDate = new Date(gitLogAdded.latest.date);
+    return new Date(gitLogAdded.latest.date);
+}
 
+export async function getLatestStatusChange(relativePath) {
     let gitBlame = await git.raw(['blame', relativePath]);
     let gitBlameLines = gitBlame.split('\n');
     let lastStatusChange = gitBlameLines.filter(line => line.match(/status:/gi))?.pop()?.match(/(?<=\s)\d+-\d+-\d+/g)?.pop();
-    let lastStatusChangeDate = new Date(lastStatusChange);
-
-    return {
-        created: addedDate,
-        lastStatusChange: lastStatusChangeDate
-    }
+    return new Date(lastStatusChange);
 }
 
 export async function getEip1Data() {

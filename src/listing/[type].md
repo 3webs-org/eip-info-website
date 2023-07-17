@@ -1,9 +1,7 @@
 ---
-title: Interface
+title: {{ $params.typeTitleCase }}
 listing: true
-filter:
-    category:
-    - Interface
+filter: {{ $params.filter }}
 ---
 
 <!-- markdownlint-disable no-inline-html -->
