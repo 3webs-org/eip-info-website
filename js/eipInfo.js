@@ -16,7 +16,7 @@ let yamlEngine = (str) => {
 // Helpers
 
 function getEipNumber(file) {
-    return file.match(/(?<=eip-)\w+$/gi)?.pop();
+    return file.match(/(?<=eip-)\w+(?=(?:.\w+)$)/gi)?.pop();
 }
 
 function formatDateString(date) {
