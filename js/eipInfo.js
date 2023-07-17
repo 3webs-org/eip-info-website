@@ -7,6 +7,24 @@ import Git from 'nodegit';
 let yamlEngine = (str) => {
     try {
         let data = yaml.load(str);
+
+        // Fix typo'd dates
+        // Can be removed once https://github.com/ethereum/EIPs/pull/7350 is merged
+        for (let key in data) {
+            let value = data[key];
+            if (/^\d+-\d+-\d+$/.test(value)) {
+                let year = parseInt(value.split('-')[0]);
+                let month = parseInt(value.split('-')[1]);
+                let day = parseInt(value.split('-')[2]);
+                // Create a date object
+                let date = new Date(year, month - 1, day);
+                // If the date is valid, assign it
+                if (!isNaN(date.getTime())) {
+                    data[key] = date
+                }
+            }
+        }
+
         return data;
     } catch (e) {
         return null;
@@ -16,7 +34,9 @@ let yamlEngine = (str) => {
 // Helpers
 
 function getEipNumber(file) {
-    return file.match(/(?<=eip-)\w+(?=(?:.\w+)$)/gi)?.pop();
+    let eip = file.match(/(?<=eip-)\w+(?=(?:.\w+)$)/gi)?.pop();
+    if (eip == 'template') return null; // Ignore EIP template
+    return eip;
 }
 
 function formatDateString(date) {
@@ -236,27 +256,36 @@ while (commit) {
 
 // Now make the necessary transformations
 for (let eip in eipInfo) {
-    // Load the data
-    let data = eipInfo[eip].data;
+    try {
+        // Load the data
+        let data = eipInfo[eip].data;
 
-    // Transform authors
-    if (data['author']) data['author'] = await parseAuthorData(data['author']);
+        // Transform authors
+        if (data['author']) data['author'] = await parseAuthorData(data['author']);
 
-    // Provide slash versions of dates
-    if (data['last-updated']) data['last-updated-slash'] = formatDateStringSlashSeperated(data['last-updated']);
-    if (data['last-status-change']) data['last-status-change-slash'] = formatDateStringSlashSeperated(data['last-status-change']);
-    if (data['created']) data['created-slash'] = formatDateStringSlashSeperated(data['created']);
-    if (data['finalized']) data['finalized-slash'] = formatDateStringSlashSeperated(data['finalized']);
+        // Provide slash versions of dates
+        if (data['last-updated']) data['last-updated-slash'] = formatDateStringSlashSeperated(data['last-updated']);
+        if (data['last-status-change']) data['last-status-change-slash'] = formatDateStringSlashSeperated(data['last-status-change']);
+        if (data['created']) data['created-slash'] = formatDateStringSlashSeperated(data['created']);
+        if (data['finalized']) data['finalized-slash'] = formatDateStringSlashSeperated(data['finalized']);
 
-    // And stringify original versions
-    if (data['last-updated']) data['last-updated'] = formatDateString(data['last-updated']);
-    if (data['last-status-change']) data['last-status-change'] = formatDateString(data['last-status-change']);
-    if (data['created']) data['created'] = formatDateString(data['created']);
-    if (data['finalized']) data['finalized'] = formatDateString(data['finalized']);
+        // And stringify original versions
+        if (data['last-updated']) data['last-updated'] = formatDateString(data['last-updated']);
+        if (data['last-status-change']) data['last-status-change'] = formatDateString(data['last-status-change']);
+        if (data['created']) data['created'] = formatDateString(data['created']);
+        if (data['finalized']) data['finalized'] = formatDateString(data['finalized']);
 
 
-    // Save the data
-    eipInfo[eip].data = data;
+        // Save the data
+        eipInfo[eip].data = data;
+    } catch (e) {
+        // Add debugging info
+        console.error(`EIP: ${eip}`);
+        console.error(`Data: ${JSON.stringify(eipInfo[eip].data, null, 2)}`);
+
+        // Re-throw
+        throw e;
+    }
 }
 
 export default eipInfo;
