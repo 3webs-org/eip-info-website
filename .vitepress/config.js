@@ -187,13 +187,14 @@ export default withPwa(defineConfig({
         for (let eip in config.eips) {
             let fm = config.eips[eip].data;
 
+
             feed.addItem({
                 title: fm.title,
                 id: `${url}/EIPS/eip-${eip}`,
                 link: `${url}/EIPS/eip-${eip}`,
                 date: fm['last-status-change'],
                 description: fm.description,
-                author: fm.author.map(author => author.name),
+                author: fm.author?.map(author => author.name),
                 category: [
                     {
                         name: fm.category ?? fm.type,
