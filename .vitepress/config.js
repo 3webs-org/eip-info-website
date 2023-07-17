@@ -192,7 +192,7 @@ export default withPwa(defineConfig({
                 title: fm.title,
                 id: `${url}/EIPS/eip-${eip}`,
                 link: `${url}/EIPS/eip-${eip}`,
-                date: fm['last-status-change'],
+                date: new Date(fm['last-status-change']),
                 description: fm.description,
                 author: fm.author?.map(author => author.name),
                 category: [
