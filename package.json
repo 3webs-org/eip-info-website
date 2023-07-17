@@ -1,0 +1,36 @@
+{
+  "name": "eip-info-website",
+  "version": "1.0.0",
+  "description": "The website for eip.info",
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview",
+    "fix-memory-limit": "cross-env LIMIT=4096 increase-memory-limit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ethereum/EIPs.git"
+  },
+  "license": "CC0-1.0",
+  "bugs": {
+    "url": "https://github.com/ethereum/EIPs/issues"
+  },
+  "homepage": "https://eips.ethereum.org/",
+  "devDependencies": {
+    "@vite-pwa/vitepress": "^0.0.5",
+    "cross-env": "^5.0.5",
+    "feed": "^4.2.2",
+    "flexsearch": "^0.7.31",
+    "gray-matter": "^4.0.3",
+    "increase-memory-limit": "^1.0.3",
+    "js-yaml": "^4.1.0",
+    "simple-git": "^3.16.1",
+    "vite-logger": "^0.0.1",
+    "vite-plugin-pwa": "^0.14.4",
+    "vitepress": "^1.0.0-alpha.75",
+    "vue": "^3.2.47",
+    "yaml": "^2.2.1"
+  }
+}
