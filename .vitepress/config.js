@@ -187,6 +187,13 @@ export default withPwa(defineConfig({
         for (let eip in config.eips) {
             let fm = config.eips[eip].data;
 
+            if (
+                !('title' in fm) ||
+                !('last-status-change' in fm) ||
+                !('description' in fm) ||
+                !('author' in fm) ||
+                !('type' in fm)
+            ) continue;
 
             feed.addItem({
                 title: fm.title,
