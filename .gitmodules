@@ -1,3 +1,4 @@
 [submodule "EIPs"]
 	path = EIPs
-	url = https://github.com/ethereum/EIPs/
+	url = https://github.com/ethereum/EIPS.git
+	branch = master
