@@ -147,6 +147,7 @@ while (commit) {
                 // Add missing fields
                 let data = gm.data;
                 data['last-updated'] = commit.date();
+                data['last-updated-commit'] = commit.sha();
                 if (!data['eip']) data['eip'] = eip;
                 gm.data = data;
 
@@ -179,6 +180,7 @@ while (commit) {
                 if (['Final', 'Living'].includes(gm.data['status'])) data['finalized'] = commit.date();
                 if (!data['last-status-change']) data['last-status-change'] = commit.date();
                 if (!data['created']) data['created'] = commit.date();
+                if (!data['created-commit']) data['created-commit'] = commit.sha();
 
                 // Save
                 eipInfo[eip].data = data;
