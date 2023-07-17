@@ -254,6 +254,11 @@ while (commit) {
     commit = await commit.getParents().then(parents => parents[0]);
 }
 
+// Remove aliased EIPs
+for (let eip in aliases) {
+    delete eipInfo[eip];
+}
+
 // Now make the necessary transformations
 for (let eip in eipInfo) {
     try {
@@ -290,4 +295,4 @@ for (let eip in eipInfo) {
 
 export default eipInfo;
 
-console.log(eipInfo);
+export { aliases };

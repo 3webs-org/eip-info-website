@@ -1,4 +1,4 @@
-import eipInfo from './eipInfo.js';
+import eipInfo, { aliases } from './eipInfo.js';
 
 export default {
     "statuses": [
@@ -18,4 +18,5 @@ export default {
         ],
     },
     "eips": eipInfo,
+    "aliases": aliases,
 };

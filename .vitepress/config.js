@@ -58,22 +58,23 @@ export default withPwa(defineConfig({
             if (pageData.relativePath.match(/eip\/\w+\.md/)) {
                 logger.info(`Generating Metadata for ${pageData.relativePath}`);
                 
-                let eipN = await filenameToEipNumber(pageData.relativePath);
-                if (!eipN) {
+                let eip = pageData.relativePath.match(/eip\/(\w+)\.md/)[1];
+                if (!eip) {
                     throw new Error(`EIP ${pageData.relativePath} not found`);
                 }
-                let frontmatter = eipsSpread[eipN];
-                if (!frontmatter) {
-                    throw new Error(`EIP ${eipN} not found`);
+                if (!(eip in config.eips)) {
+                    throw new Error(`EIP ${eip} not found`);
                 }
+                let eipData = config.eips[eip];
+                let frontmatter = eipData.data;
     
                 return [
                     // Regular Metadata
                     [ 'title', {}, frontmatter.title ]
                     [ 'meta', { name: 'description', content: pageData.description }],
                     [ 'link', { rel: 'canonical', href: `https://eips.ethereum.org/${pageData.relativePath}` } ],
-                    ...authors.map(author => [ 'meta', { name: 'author', content: author.name } ]),
-                    [ 'meta', { name: 'date', content: frontmatter.created.replace('-', '/') } ],
+                    ...frontmatter.author.map(author => [ 'meta', { name: 'author', content: author.name } ]),
+                    [ 'meta', { name: 'date', content: frontmatter['created-slash'] } ],
                     [ 'meta', { name: 'copyright', content: 'CC0 1.0 Universal (Public Domain)' } ],
                     // Open Graph
                     [ 'meta', { property: 'og:title', content: frontmatter.title } ],
@@ -89,18 +90,18 @@ export default withPwa(defineConfig({
                     [ 'meta', { name: 'twitter:description', content: pageData.description } ],
                     // Dublin Core
                     [ 'meta', { name: 'DC.title', content: frontmatter.title } ],
-                    ...authors.map(author => [ 'meta', { name: 'DC.creator', content: author.name } ]),
-                    [ 'meta', { name: 'DC.date', content: frontmatter.createdSlashSeperated } ],
-                    frontmatter.finalized ? [ 'meta', { name: 'DC.issued', content: frontmatter.finalizedSlashSeperated } ] : [],
+                    ...frontmatter.author.map(author => [ 'meta', { name: 'DC.creator', content: author.name } ]),
+                    [ 'meta', { name: 'DC.date', content: frontmatter['created-slash'] } ],
+                    frontmatter.finalized ? [ 'meta', { name: 'DC.issued', content: frontmatter['finalized-slash'] } ] : [],
                     [ 'meta', { name: 'DC.format', content: 'text/html' } ],
                     [ 'meta', { name: 'DC.language', content: 'en-US' } ],
                     [ 'meta', { name: 'DC.publisher', content: siteData.title } ],
                     [ 'meta', { name: 'DC.rights', content: 'CC0 1.0 Universal (Public Domain)' } ],
                     // Citation
                     [ 'meta', { name: 'citation_title', content: frontmatter.title } ],
-                    ...authors.map(author => [ 'meta', { name: 'citation_author', content: author.name } ]),
-                    [ 'meta', { name: 'citation_online_date', content: frontmatter.createdSlashSeperated } ],
-                    frontmatter.finalized ? [ 'meta', { name: 'citation_publication_date', content: frontmatter.finalizedSlashSeperated } ] : [],
+                    ...frontmatter.author.map(author => [ 'meta', { name: 'citation_author', content: author.name } ]),
+                    [ 'meta', { name: 'citation_online_date', content: frontmatter['created-slash'] } ],
+                    frontmatter.finalized ? [ 'meta', { name: 'citation_publication_date', content: frontmatter['finalized-slash'] } ] : [],
                     [ 'meta', { name: 'citation_technical_report_institution', content: siteData.title } ],
                     [ 'meta', { name: 'citation_technical_report_number', content: frontmatter.eip } ],
                     // LD+JSON
@@ -124,18 +125,16 @@ export default withPwa(defineConfig({
         try { // Custom error handling needed because of the way VitePress handles runtime errors (i.e. it doesn't)
             logger.info(`Transforming ${pageData.relativePath}`, { timestamp: true });
 
-            if (pageData.relativePath.match(/EIPS\/eip-\w+\.md/)) {
-                pageData = { ...pageData };
-                
-                let eipN = await filenameToEipNumber(pageData.relativePath);
-                if (!eipN) {
+            if (pageData.relativePath.match(/eips\/\w+\.md/)) {
+                let eip = pageData.relativePath.match(/eip\/(\w+)\.md/)[1];
+                if (!eip) {
                     throw new Error(`EIP ${pageData.relativePath} not found`);
                 }
-                let frontmatter = eipsSpread[eipN];
-                if (!frontmatter) {
-                    throw new Error(`EIP ${eipN} not found`);
+                if (!(eip in config.eips)) {
+                    throw new Error(`EIP ${eip} not found`);
                 }
-
+                let eipData = config.eips[eip];
+                let frontmatter = eipData.data;
                 pageData.frontmatter = frontmatter;
 
                 logger.info(`Transformed ${pageData.relativePath} (EIP)`, { timestamp: true });
@@ -143,7 +142,7 @@ export default withPwa(defineConfig({
             } else if (pageData.frontmatter.listing) {
                 pageData = { ...pageData };
                 if (pageData.filter !== undefined) {
-                    pageData.frontmatter.filteredEips = eips.filter(eip => {
+                    pageData.frontmatter.filteredEips = Object.values(config.eips).filter(eip => {
                         return Object.keys(pageData.frontmatter.filter).every(key => pageData.frontmatter.filter[key].includes(eip[key]));
                     }).map(eip => {
                         return {
@@ -154,21 +153,6 @@ export default withPwa(defineConfig({
                         };
                     });
                     logger.info(`Transformed ${pageData.relativePath} (listing page)`, { timestamp: true });
-                } else {
-                    // Inject all EIPs into the search page (only a subset of the data is searchable)
-                    pageData.frontmatter.allEips = eips.map(eip => {
-                        return {
-                            eip: eip.eip,
-                            title: eip.title,
-                            wrongTitle: eip.wrongTitle,
-                            status: eip.status,
-                            type: eip.type,
-                            category: eip.category,
-                            authors: eip.authors,
-                            created: eip.created,
-                        };
-                    });
-                    logger.info(`Transformed ${pageData.relativePath} (search page)`, { timestamp: true });
                 }
 
                 return pageData;
@@ -200,8 +184,8 @@ export default withPwa(defineConfig({
                 copyright: 'CC0 1.0 Universal (Public Domain)',
             });
 
-            for (let eip in eips) {
-                let eipData = eips[eip];
+            for (let eip in config.eips) {
+                let eipData = config.eips[eip];
 
                 let skip = false;
 

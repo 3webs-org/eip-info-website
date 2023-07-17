@@ -41,5 +41,6 @@ export default {
                 }
             }
         }
+        return paths;
     }
 }

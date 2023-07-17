@@ -6,12 +6,13 @@ export default {
     paths() {
         let paths = [];
 
-        for (let eip of config.eips) {
+        for (let eip in config.eips) {
+            let eipData = config.eips[eip];
             paths.push({
                 params: {
-                    eip: eip.data.eip
+                    eip: eip
                 },
-                content: `---\n${yaml.dump(eip.data)}\n---\n\n${eip.content}` // Hacky way to recreate the original file
+                content: `---\n${yaml.dump(eipData.data)}\n---\n\n${eipData.content}` // Hacky way to recreate the original file
             })
         }
 
