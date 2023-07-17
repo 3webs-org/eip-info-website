@@ -1,5 +1,6 @@
+import eips from './eips.js';
+
 export default {
-    "git": "https://github.com/ethereum/EIPs.git",
     "statuses": [
         "Living", "Last Call", "Final", "Review", "Draft", "Stagnant", "Withdrawn"
     ],
@@ -15,5 +16,6 @@ export default {
             "Interface",
             "Networking",
         ],
-    }
+    },
+    "eips": eips,
 };

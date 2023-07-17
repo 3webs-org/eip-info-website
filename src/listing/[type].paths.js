@@ -1,4 +1,4 @@
-import config from "../src/config.js";
+import config from "../../js/config.js";
 
 export default {
     paths() {

@@ -5,38 +5,9 @@ import { Feed } from 'feed';
 import { withPwa } from '@vite-pwa/vitepress';
 import { defineConfig } from 'vitepress';
 
-import { fetchEips, filenameToEipNumber } from './parser';
+import config from "../js/config.js";
 
 const logger = createLogger('info', true);
-
-logger.info('Fetching EIPs', { timestamp: true });
-const eips = await fetchEips();
-const eipsSpread = {};
-for (let eip of eips) {
-    eipsSpread[eip.eip] = eip;
-}
-logger.info('Fetched EIPs', { timestamp: true });
-
-async function copyDirectory(from, to) {
-    // Recursively copy a directory, without overwriting existing files
-    // Uses fs.constants.COPYFILE_EXCL to avoid overwriting files
-    await fs.mkdir(to, { recursive: true });
-    let files = await fs.readdir(from);
-    for (let file of files) {
-        let current = await fs.lstat(`${from}/${file}`);
-        if (current.isDirectory()) {
-            await copyDirectory(`${from}/${file}`, `${to}/${file}`);
-        } else {
-            try {
-                await fs.copyFile(`${from}/${file}`, `${to}/${file}`, fs.constants.COPYFILE_EXCL);
-            } catch (e) {
-                if (e.code !== 'EEXIST') {
-                    throw e; // If the error isn't because the file already exists, throw it
-                }
-            }
-        }
-    }
-}
 
 export default withPwa(defineConfig({
     srcDir: './src',
