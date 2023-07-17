@@ -83,10 +83,7 @@ let commit = await repo.getHeadCommit();
 
 // Walk it back
 while (commit) {
-    console.log(commit.sha());
-    console.log(commit.message());
     try {
-        console.log("DEBUG 1")
         // Get the changes made in this commit
         let diffs = await commit.getDiff();
         let patches = [];
@@ -94,7 +91,6 @@ while (commit) {
             patches.push(...(await diff.patches()));
         }
 
-        console.log("DEBUG 2")
         // Alias management
         // If 1 delete and 1 add, add an alias from the deleted file to the added file
         // If rename, add an alias from the old file to the new file
@@ -130,7 +126,6 @@ while (commit) {
             if (oldEip == newEip) continue; // Ignore renames that don't change the EIP number, if this ever happens
             if (!(oldEip in aliases)) aliases[oldEip] = newEip;
         }
-        console.log("DEBUG 3")
         // If an EIP is added or modified, and does not have an alias, initialize its gray matter data, and add necessary fields
         for (let patch of added.concat(modified)) {
             let eip = getEipNumber(patch.newFile().path());
@@ -161,7 +156,6 @@ while (commit) {
             }
         }
 
-        console.log("DEBUG 4")
         // Add-only cases
         for (let patch of added) {
             let eip = getEipNumber(patch.newFile().path());
@@ -192,7 +186,6 @@ while (commit) {
                 eipInfo[eip].data = data;
             }
         }
-        console.log("DEBUG 5")
 
         // Modify-only cases
         for (let patch of modified) {
