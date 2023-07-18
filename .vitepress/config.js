@@ -99,8 +99,6 @@ export default defineConfig({
                 }
                 let eipData = config.eips[eip];
                 let frontmatter = eipData.data;
-
-                console.log(JSON.stringify(frontmatter, null, 4));
     
                 return [
                     // Regular Metadata
@@ -256,5 +254,9 @@ export default defineConfig({
         // Export the feed
         await fs.writeFile(`./.vitepress/dist/eips.atom`, feed.atom1());
     },
-    mpa: false
+    mpa: true,
+    rewrites: {
+        'public/:path*': '/:path*',
+    },
+    ignoreDeadLinks: true,
 });

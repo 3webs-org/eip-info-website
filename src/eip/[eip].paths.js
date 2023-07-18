@@ -1,4 +1,4 @@
-import config from "../../../js/config.js";
+import config from "../../js/config.js";
 
 import yaml from "js-yaml";
 

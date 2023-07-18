@@ -293,13 +293,29 @@ delete eipInfo['5988'];
 for (let eip in eipInfo) {
     let content = eipInfo[eip].content;
     // Regex to match links
-    let regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let regex = /!?\[([^\]]*)\]\(([^)]+)\)/g;
     let match;
     while ((match = regex.exec(content)) != null) {
+        let isImg = match[0].startsWith('![');
         if (match[2].startsWith("../assets/eip-")) {
             // ../assets/eip-<eip>/<assetPa/th>
-            let assetPath = `${match[2].substring(15 + eip.length)}`;
-            content = content.replace(match[0], `[${match[1]}](${assetPath})`);
+            if (isImg) {
+                let assetPath = `../public/eip/${eip}/${match[2].substring(15 + eip.length)}`;
+                content = content.replace(match[0], `![${match[1]}](${assetPath})`);
+            } else {
+                let assetPath = `./${eip}/${match[2].substring(15 + eip.length)}`;
+                content = content.replace(match[0], `![${match[1]}](${assetPath})`);
+            }
+        } else if (match[2].startsWith("./eip-") && !isImg) {
+            let linkedEip = match[2].split('eip-')[1].split('.')[0];
+            content = content.replace(match[0], `[${match[1]}](./${linkedEip}.md)`);
+        } else if (match[2].startsWith("../LICENSE") && !isImg) {
+            content = content.replace(match[0], `[${match[1]}](../LICENSE.md)`);
+        } else if (match[2].startsWith("../config/") && !isImg) {
+            // Strip the link. It ain't needed. Why do you have to do this to me, EIP-7329?
+            content = content.replace(match[0], match[1]);
+        } else if (match[2].startsWith('.')) {
+            throw new Error(`Unknown link: ${match[2]} at EIP ${eip}`);
         }
     }
     // Reassign
