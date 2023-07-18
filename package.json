@@ -29,7 +29,7 @@
     "js-yaml": "^4.1.0",
     "vite-logger": "^0.0.1",
     "vite-plugin-pwa": "^0.14.4",
-    "vitepress": "git://github.com/Pandapip1/vitepress.git#patch-1",
+    "vitepress": "^1.0.0-alpha.75",
     "vue": "^3.2.47",
     "yaml": "^2.2.1"
   }
