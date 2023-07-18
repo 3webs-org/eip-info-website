@@ -127,7 +127,7 @@ export default withPwa(defineConfig({
         try { // Custom error handling needed because of the way VitePress handles runtime errors (i.e. it doesn't)
             logger.info(`Transforming ${pageData.relativePath}`, { timestamp: true });
 
-            if (pageData.relativePath.match(/eips\/\w+\.md/)) {
+            if (pageData.relativePath.match(/eip\/\w+\.md/)) {
                 let eip = pageData.relativePath.match(/eip\/(\w+)\.md/)[1];
                 if (!eip) {
                     throw new Error(`EIP ${pageData.relativePath} not found`);
@@ -197,8 +197,8 @@ export default withPwa(defineConfig({
 
             feed.addItem({
                 title: fm.title,
-                id: `${url}/EIPS/eip-${eip}`,
-                link: `${url}/EIPS/eip-${eip}`,
+                id: `${url}/eip/${eip}`,
+                link: `${url}/eip/${eip}`,
                 date: new Date(fm['last-status-change']),
                 description: fm.description,
                 author: fm.author,

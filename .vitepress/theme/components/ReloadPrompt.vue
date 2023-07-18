@@ -24,7 +24,6 @@ onBeforeMount(async () => {
     onOfflineReady,
     onNeedRefresh,
     onRegistered() {
-
       console.info('Service Worker registered')
     },
     onRegisterError(e) {
