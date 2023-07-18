@@ -1,0 +1,19 @@
+name: Sync EIPs Repository
+on:
+    schedule:
+      - cron: "*/5 * * * *" # Every 5 minutes
+    workflow_dispatch:
+
+jobs:
+    submodule-sync:
+        name: Submodule Sync
+        runs-on: ubuntu-latest
+        steps:
+          - name: Submodule Sync
+            uses: mheap/submodule-sync-action@96b11741d429d96ec3a6460b7e42d7528e09d6bb # v1.3.1
+            with:
+                path: EIPs
+                ref: master
+                pr_branch: automated-submodule-update
+                base_branch: main
+                target_branch: main
