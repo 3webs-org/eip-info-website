@@ -2,8 +2,6 @@ import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
 import Git from 'nodegit';
 
-import fs from 'fs';
-
 // Generate js-yaml engine that will never throw an error
 
 let yamlEngine = (str) => {
