@@ -2,7 +2,6 @@ import fs from 'node:fs/promises';
 
 import { createLogger } from 'vite-logger';
 import { Feed } from 'feed';
-import { withPwa } from '@vite-pwa/vitepress';
 import { defineConfig } from 'vitepress';
 
 import config from "../js/config.js";
@@ -223,32 +222,6 @@ export default withPwa(defineConfig({
 
         // Export the feed
         await fs.writeFile(`./.vitepress/dist/eips.atom`, feed.atom1());
-    },
-    pwa: {
-        injectRegister: 'script',
-        workbox: {
-            globPatterns: [] // Items to save to offline cache
-        },
-        manifest: {
-            "name": "Ethereum Improvement Proposals",
-            "short_name": "EIPs",
-            "description": "Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.",
-            "icons": [
-                {
-                    "src": "/img/android-chrome-192x192.png",
-                    "sizes": "192x192",
-                    "type": "image/png"
-                },
-                {
-                    "src": "/img/android-chrome-512x512.png",
-                    "sizes": "512x512",
-                    "type": "image/png"
-                }
-            ],
-            "theme_color": "#ffffff",
-            "background_color": "#ffffff",
-            "display": "standalone"
-        }
     },
     mpa: true
 }));

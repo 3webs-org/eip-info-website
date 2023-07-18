@@ -20,7 +20,6 @@
   "homepage": "https://eips.ethereum.org/",
   "dependencies": {
     "nodegit": "^0.26.5",
-    "@vite-pwa/vitepress": "^0.0.5",
     "cross-env": "^5.0.5",
     "feed": "^4.2.2",
     "flexsearch": "^0.7.31",
@@ -28,9 +27,7 @@
     "increase-memory-limit": "^1.0.3",
     "js-yaml": "^4.1.0",
     "vite-logger": "^0.0.1",
-    "vite-plugin-pwa": "^0.14.4",
     "vitepress": "^1.0.0-alpha.75",
-    "vue": "^3.2.47",
-    "yaml": "^2.2.1"
+    "vue": "^3.2.47"
   }
 }
