@@ -8,7 +8,7 @@ import config from "../js/config.js";
 
 const logger = createLogger('info', true);
 
-export default withPwa(defineConfig({
+export default defineConfig({
     srcDir: './src',
     title: 'Ethereum Improvement Proposals',
     description: 'Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.',
@@ -224,4 +224,4 @@ export default withPwa(defineConfig({
         await fs.writeFile(`./.vitepress/dist/eips.atom`, feed.atom1());
     },
     mpa: true
-}));
+});
