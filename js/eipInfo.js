@@ -8,27 +8,7 @@ import fs from 'fs';
 
 let yamlEngine = (str) => {
     try {
-        let data = yaml.load(str);
-
-        // Fix typo'd dates
-        // Can be removed once https://github.com/ethereum/EIPs/pull/7350 is merged
-        for (let key in data) {
-            let value = data[key];
-            if (/^\d+-\d+-\d+$/.test(value)) {
-                let dateComponents = value.split('-');
-                let year = parseInt(dateComponents[0]);
-                let month = parseInt(dateComponents[1]);
-                let day = parseInt(dateComponents[2]);
-                // Create a date object
-                let date = new Date(year, month - 1, day);
-                // If the date is valid, assign it
-                if (!isNaN(date.getTime())) {
-                    data[key] = date
-                }
-            }
-        }
-
-        return data;
+        return yaml.load(str);
     } catch (e) {
         return null;
     }
