@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 
 import { createLogger } from 'vite-logger';
 import { Feed } from 'feed';
@@ -8,16 +9,49 @@ import config from "../js/config.js";
 
 const logger = createLogger('info', true);
 
+async function recursiveReadDir(dir) {
+    let files = await fs.readdir(dir, { withFileTypes: true });
+    let results = await Promise.all(files.map(async file => {
+        if (file.isDirectory()) {
+            let recur = await recursiveReadDir(`${dir}/${file.name}`);
+            return recur.map(f => `${file.name}/${f}`);
+        } else {
+            return file.name;
+        }
+    }));
+    return results.flat();
+}
+
+// "Pre-build hook"
+async function preBuild() {
+    // Clear src/public/eip
+    await fs.rm('./src/public/eip', { recursive: true, force: true });
+    // Copy EIP assets (EIPs/assets/eip-<eip>/<pa/th>) to src/public/eip/<eip>/<pa/th>
+    let allAssets = await recursiveReadDir('./EIPs/assets');
+    await Promise.all(allAssets.map(async asset => {
+        let eip = asset.split('/')[0].replace('eip-', '');
+        let assetPath = asset.split('/').slice(1).join('/');
+        let assetPathParent = assetPath.split('/').slice(0, -1).join('/');
+        if (!(eip in config.eips)) {
+            return; // Skip if EIP not found (e.g. assets/css)
+        }
+        await fs.mkdir(`./src/public/eip/${eip}/${assetPathParent}`, { recursive: true });
+        await fs.copyFile(`./EIPs/assets/${asset}`, `./src/public/eip/${eip}/${assetPath}`);
+    }));
+}
+
+await preBuild();
+
 export default defineConfig({
     srcDir: './src',
     title: 'Ethereum Improvement Proposals',
     description: 'Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.',
     cleanUrls: true,
     base: '/',
+    lastUpdated: false, // This has to be false because it will try to fetch /src/eip/<some actual EIP number>/index.md and crash. Also, it's REALLY slow.
     themeConfig: {
         logo: '/img/ethereum-logo.svg',
         outline: 'deep',
-        lastUpdatedText: 'Last Updated',
         nav: [
             { text: 'All', link: '/listing/all' },
             { text: 'Core', link: '/listing/core' },
@@ -51,7 +85,6 @@ export default defineConfig({
     ],
     appearance: true,
     titleTemplate: false,
-    lastUpdated: true,
     async transformHead({ siteConfig, siteData, pageData, title, description, head, content }) {
         try { // Custom error handling needed because of the way VitePress handles errors (i.e. it doesn't)
             if (pageData.relativePath.match(/eip\/\w+\.md/)) {
@@ -223,5 +256,5 @@ export default defineConfig({
         // Export the feed
         await fs.writeFile(`./.vitepress/dist/eips.atom`, feed.atom1());
     },
-    mpa: true
+    mpa: false
 });

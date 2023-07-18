@@ -15,9 +15,10 @@ let yamlEngine = (str) => {
         for (let key in data) {
             let value = data[key];
             if (/^\d+-\d+-\d+$/.test(value)) {
-                let year = parseInt(value.split('-')[0]);
-                let month = parseInt(value.split('-')[1]);
-                let day = parseInt(value.split('-')[2]);
+                let dateComponents = value.split('-');
+                let year = parseInt(dateComponents[0]);
+                let month = parseInt(dateComponents[1]);
+                let day = parseInt(dateComponents[2]);
                 // Create a date object
                 let date = new Date(year, month - 1, day);
                 // If the date is valid, assign it
@@ -51,26 +52,18 @@ function formatDateStringSlashSeperated(date) {
 
 async function parseAuthorData(authorData) {
     let authors = [];
-    for (let author of authorData.match(/(?<=^|,\s*)[^\s]([^,"]|".*")+(?=(?:$|,))/g)) {
+    let rawAuthorRegex = authorData.match(/(?<=^|,\s*)[^\s]([^,"]|".*")+(?=(?:$|,))/g);
+    await Promise.all(rawAuthorRegex.map(async (author) => {
         let authorName = author.match(/(?<![(<].*)[^\s(<][^(<]*\w/g);
         let emailData = author.match(/(?<=\<).*(?=\>)/g);
         let githubData = author.match(/(?<=\(@)[\w-]+(?=\))/g);
-        if (emailData) {
-            authors.push({
-                name: authorName.pop(),
-                email: emailData.pop()
-            });
-        } else if (githubData) {
-            authors.push({
-                name: authorName.pop(),
-                github: githubData.pop()
-            });
-        } else {
-            authors.push({
-                name: authorName.pop()
-            });
-        }
-    }
+        let authorObj = {
+            name: authorName.pop()
+        };
+        if (emailData) authorObj.email = emailData.pop();
+        if (githubData) authorObj.github = githubData.pop();
+        authors.push(authorObj);
+    }));
     return authors;
 }
 
@@ -127,7 +120,7 @@ while (commit) {
             if (oldEip && !(oldEip in aliases)) aliases[oldEip] = newEip;
         }
         // If an EIP is added or modified, and does not have an alias, initialize its gray matter data, and add necessary fields
-        for (let patch of added.concat(modified)) {
+        await Promise.all(added.concat(modified).map(async (patch) => {
             let eip = getEipNumber(patch.newFile().path());
             if (eip && !(eip in aliases) && !(eip in eipInfo)) {
                 // Read the file's contents
@@ -141,7 +134,7 @@ while (commit) {
                 });
 
                 if (gm == null) {
-                    continue; // An error occurred while parsing the yaml, skip this file
+                    return; // An error occurred while parsing the yaml, skip this file
                 }
 
                 // Add missing fields
@@ -154,10 +147,10 @@ while (commit) {
                 // Save
                 eipInfo[eip] = gm;
             }
-        }
+        }));
 
         // Add-only cases
-        for (let patch of added) {
+        await Promise.all(added.map(async (patch) => {
             let eip = getEipNumber(patch.newFile().path());
             while (eip in aliases) {
                 eip = aliases[eip];
@@ -174,7 +167,7 @@ while (commit) {
                 });
 
                 if (gm == null) {
-                    continue; // An error occurred while parsing the yaml, skip this file
+                    return; // An error occurred while parsing the yaml, skip this file
                 }
 
                 // Add missing fields
@@ -187,10 +180,10 @@ while (commit) {
                 // Save
                 eipInfo[eip].data = data;
             }
-        }
+        }));
 
         // Modify-only cases
-        for (let patch of modified) {
+        await Promise.all(modified.map(async (patch) => {
             let eip = getEipNumber(patch.newFile().path());
             while (eip in aliases) eip = aliases[eip];
             if (eip && eip in eipInfo) {
@@ -215,7 +208,7 @@ while (commit) {
                 });
 
                 if (gmNew == null || gmOld == null) {
-                    continue; // An error occurred while parsing the yaml, skip this file
+                    return; // An error occurred while parsing the yaml, skip this file
                 }
 
                 // Add missing fields
@@ -226,7 +219,7 @@ while (commit) {
                 // Save
                 eipInfo[eip].data = data;
             }
-        }
+        }));
     } catch (e) {
         // Add debugging info
 
@@ -252,24 +245,6 @@ while (commit) {
 
     // Walk through the commit's parents
     commit = await commit.getParents().then(parents => parents[0]);
-}
-
-// Remove aliased EIPs
-// TODO: They should never have been added in the first place
-for (let eip in aliases) {
-    delete eipInfo[eip];
-}
-
-// Make sure every EIP has a file
-// TODO: Remove this once all EIPs have been added
-for (let eip in eipInfo) {
-    let filename = `EIPs/EIPS/eip-${eip}.md`;
-    if (!(fs.existsSync(filename))) {
-        console.error(`EIP ${eip} has no file!`);
-        console.error(`  ${filename}`);
-        console.error(JSON.stringify(eipInfo[eip].data, null, 2));
-        process.exit(1);
-    }
 }
 
 // Now make the necessary transformations
@@ -304,6 +279,31 @@ for (let eip in eipInfo) {
         // Re-throw
         throw e;
     }
+}
+
+// TODO: Temporarily nuke EIPs that are confirmed to break the build, as well as all unconfirmed EIPs
+for (let eip in eipInfo) {
+    if (parseInt(eip) != eip || parseInt(eip) < 5883) {
+        delete eipInfo[eip];
+    }
+}
+delete eipInfo['5988'];
+
+// Rewrite links
+for (let eip in eipInfo) {
+    let content = eipInfo[eip].content;
+    // Regex to match links
+    let regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let match;
+    while ((match = regex.exec(content)) != null) {
+        if (match[2].startsWith("../assets/eip-")) {
+            // ../assets/eip-<eip>/<assetPa/th>
+            let assetPath = `${match[2].substring(15 + eip.length)}`;
+            content = content.replace(match[0], `[${match[1]}](${assetPath})`);
+        }
+    }
+    // Reassign
+    eipInfo[eip].content = content;
 }
 
 export default eipInfo;

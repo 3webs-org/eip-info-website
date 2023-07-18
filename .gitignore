@@ -25,3 +25,6 @@ vite.config.js.*
 
 # VSCode
 .vscode
+
+# Copied assets
+src/public/eip
