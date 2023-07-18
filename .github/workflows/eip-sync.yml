@@ -15,5 +15,4 @@ jobs:
                 path: EIPs
                 ref: master
                 pr_branch: automated-submodule-update
-                base_branch: main
                 target_branch: main
