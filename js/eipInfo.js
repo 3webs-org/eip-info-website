@@ -6,7 +6,27 @@ import Git from 'nodegit';
 
 let yamlEngine = (str) => {
     try {
-        return yaml.load(str);
+        let data = yaml.load(str);
+
+        // Fix typo'd dates
+        // Can be removed once https://github.com/ethereum/EIPs/pull/7358 is merged
+        for (let key in data) {
+            let value = data[key];
+            if (/^\d+-\d+-\d+$/.test(value)) {
+                let dateComponents = value.split('-');
+                let year = parseInt(dateComponents[0]);
+                let month = parseInt(dateComponents[1]);
+                let day = parseInt(dateComponents[2]);
+                // Create a date object
+                let date = new Date(year, month - 1, day);
+                // If the date is valid, assign it
+                if (!isNaN(date.getTime())) {
+                    data[key] = date
+                }
+            }
+        }
+
+        return data;
     } catch (e) {
         return null;
     }
@@ -21,10 +41,12 @@ function getEipNumber(file) {
 }
 
 function formatDateString(date) {
+    if (typeof date == 'string') date = new Date(date);
     return date.toISOString().split('T')[0];
 }
 
 function formatDateStringSlashSeperated(date) {
+    if (typeof date == 'string') date = new Date(date);
     return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
 
