@@ -3,11 +3,16 @@ on:
     schedule:
       - cron: "*/5 * * * *" # Every 5 minutes
     workflow_dispatch:
+    pull_request_target:
+        types:
+          - opened
+          - synchronize
 
 jobs:
     submodule-sync:
         name: Submodule Sync
         runs-on: ubuntu-latest
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         steps:
           - name: Submodule Sync
             uses: mheap/submodule-sync-action@96b11741d429d96ec3a6460b7e42d7528e09d6bb # v1.3.1
@@ -16,3 +21,11 @@ jobs:
                 ref: master
                 pr_branch: automated-submodule-update
                 target_branch: main
+    enable-auto-sync:
+        runs-on: ubuntu-latest
+
+        if: github.event_name == 'pull_request_target' && github.actor == 'github-actions[bot]' && github.ref == 'refs/heads/automated-submodule-update'
+        steps:
+          - uses: alexwilson/enable-github-automerge-action@c639c60a428a35aea587f0163bcb8d0ed2097538  # 1.0.0
+            with:
+                github-token: "${{ secrets.GITHUB_TOKEN }}"
