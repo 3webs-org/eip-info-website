@@ -32,11 +32,11 @@ jobs:
             run: npm run build
 
           - name: Upload artifact
-            uses: actions/upload-pages-artifact@v2
+            uses: actions/upload-pages-artifact@a753861a5debcf57bf8b404356158c8e1e33150c  # v2.0.0
             with:
                 path: '.vitepress/dist'
 
           - name: Deploy to GitHub Pages
             id: deployment
             if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-            uses: actions/deploy-pages@v2
+            uses: actions/deploy-pages@12ab2b16cf43a7a061fe99da74b6f8f11fb77f5b  # v2.0.3
