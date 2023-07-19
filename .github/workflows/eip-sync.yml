@@ -19,7 +19,7 @@ jobs:
             uses: getsentry/action-github-app-token@97c9e23528286821f97fba885c1b1123284b29cc  # v2.0.0
             with:
               app_id: ${{ secrets.SUBMODULE_UPDATE_APP_ID }}
-              private_key: ${{ secrets.SUBMODULE_UPDATE_APP_PRIVATE_KEY }}
+              private_key: ${{ secrets.SUBMODULE_UPDATE_PRIVATE_KEY }}
         
           - name: Submodule Sync
             uses: mheap/submodule-sync-action@96b11741d429d96ec3a6460b7e42d7528e09d6bb  # v1.3.1
