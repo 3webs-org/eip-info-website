@@ -88,7 +88,7 @@ export default defineConfig({
     async transformHead({ siteConfig, siteData, pageData, title, description, head, content }) {
         try { // Custom error handling needed because of the way VitePress handles errors (i.e. it doesn't)
             if (pageData.relativePath.match(/eip\/\w+\.md/)) {
-                logger.info(`Generating Metadata for ${pageData.relativePath}`);
+                logger.info(`Generating Metadata for ${pageData.relativePath}`, { timestamp: true });
                 
                 let eip = pageData.relativePath.match(/eip\/(\w+)\.md/)[1];
                 if (!eip) {
