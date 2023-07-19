@@ -6,6 +6,7 @@ on:
     pull_request_target:
         types:
           - opened
+          - reopened
           - synchronize
 
 jobs:
@@ -24,7 +25,7 @@ jobs:
     enable-auto-sync:
         runs-on: ubuntu-latest
 
-        if: github.event_name == 'pull_request_target' && github.actor == 'github-actions[bot]' && github.ref == 'refs/heads/automated-submodule-update'
+        if: github.event_name == 'pull_request_target' && github.ref == 'refs/heads/automated-submodule-update'
         steps:
           - uses: alexwilson/enable-github-automerge-action@c639c60a428a35aea587f0163bcb8d0ed2097538  # 1.0.0
             with:
