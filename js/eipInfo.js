@@ -77,8 +77,15 @@ let canSkipEip = {}; // Set to true once we've got all the data we need for an E
 
 let commit = await repo.getHeadCommit();
 
-// Walk it back
+let allCommits = [];
 while (commit) {
+    allCommits.push(commit);
+    commit = await commit.getParents().then(parents => parents[0]);
+}
+allCommits = allCommits.reverse();
+
+// Walk it back
+for (commit of allCommits) {
     try {
         // Get the changes made in this commit
         let diffs = await commit.getDiff();
@@ -218,9 +225,6 @@ while (commit) {
         // Re-throw
         throw e;
     }
-
-    // Walk through the commit's parents
-    commit = await commit.getParents().then(parents => parents[0]);
 }
 
 // Now make the necessary transformations
