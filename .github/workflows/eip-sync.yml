@@ -6,26 +6,34 @@ on:
     pull_request_target:
         types:
           - opened
+          - reopened
           - synchronize
 
 jobs:
     submodule-sync:
         name: Submodule Sync
         runs-on: ubuntu-latest
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         steps:
-          - name: Submodule Sync
-            uses: mheap/submodule-sync-action@96b11741d429d96ec3a6460b7e42d7528e09d6bb # v1.3.1
+          - name: Fetch JWT
+            id: fetch_jwt
+            uses: getsentry/action-github-app-token@97c9e23528286821f97fba885c1b1123284b29cc  # v2.0.0
             with:
+              app_id: ${{ secrets.SUBMODULE_UPDATE_APP_ID }}
+              private_key: ${{ secrets.SUBMODULE_UPDATE_PRIVATE_KEY }}
+        
+          - name: Submodule Sync
+            uses: mheap/submodule-sync-action@96b11741d429d96ec3a6460b7e42d7528e09d6bb  # v1.3.1
+            if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+            with:
+                token: "${{ steps.fetch_jwt.outputs.token }}"
                 path: EIPs
                 ref: master
                 pr_branch: automated-submodule-update
                 target_branch: main
-    enable-auto-sync:
-        runs-on: ubuntu-latest
 
-        if: github.event_name == 'pull_request_target' && github.actor == 'github-actions[bot]' && github.ref == 'refs/heads/automated-submodule-update'
-        steps:
-          - uses: alexwilson/enable-github-automerge-action@c639c60a428a35aea587f0163bcb8d0ed2097538  # 1.0.0
+          - name: Submodule Auto Merge
+            uses: alexwilson/enable-github-automerge-action@c639c60a428a35aea587f0163bcb8d0ed2097538  # 1.0.0
+            if: github.event_name == 'pull_request_target' && github.head_ref == 'automated-submodule-update' && github.event.pull_request.user.login == 'github-actions[bot]'
             with:
-                github-token: "${{ secrets.GITHUB_TOKEN }}"
+                github-token: "${{ steps.fetch_jwt.outputs.token }}"
+                
