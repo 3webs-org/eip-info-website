@@ -62,7 +62,23 @@ export default defineConfig({
             { text: 'Informational', link: '/listing/informational' }
         ],
         search: {
-          provider: 'local'
+            provider: 'local',
+            options: {
+                miniSearch: {
+                    /**
+                     * @type {import('minisearch').SearchOptions}
+                     * @default
+                     * { fuzzy: 0.2, prefix: true, boost: { title: 4, text: 2, titles: 1 } }
+                     */
+                    searchOptions: {
+                        fields: ['eip', 'title'],
+                        boostDocument: function (documentId, term, storedFields) {
+                            console.log(documentId, term, storedFields);
+                            return 1;
+                        }
+                    }
+                }
+            }
         },
     },
     head: [
