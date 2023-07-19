@@ -81,7 +81,6 @@ while (commit) {
     allCommits.push(commit);
     commit = await commit.getParents().then(parents => parents[0]);
 }
-allCommits = allCommits.reverse();
 
 // Walk it back
 for (commit of allCommits) {
@@ -166,24 +165,19 @@ for (commit of allCommits) {
 
                 // Add missing fields
                 let data = eipInfo[eip]?.data ?? gmNew.data;
-                if (
-                    !('eip' in data)
-                ) data['eip'] = eip;
-                if (
-                    !('last-updated' in data)
-                ) data['last-updated'] = commit.date();
-                if (
-                    !('created' in data) &&
-                    patch.isAdded()
-                ) data['created'] = commit.date();
-                if (
-                    !('last-status-change' in data) &&
-                    gmNew.data['status'] != gmOld?.data?.['status']
-                ) data['last-status-change'] = commit.date();
-                if (
-                    !('finalized' in data) &&
-                    ['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld?.data?.['status']))
-                ) data['finalized'] = commit.date();
+
+                if (!('eip' in data)) data['eip'] = eip;
+
+                let datesToAdd = {
+                    'last-updated': true,
+                    'created': patch.isAdded(),
+                    'last-status-change': gmNew.data['status'] != gmOld?.data?.['status'],
+                    'finalized': ['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld?.data?.['status'])),
+                };
+                for (let prop in datesToAdd) {
+                    if (datesToAdd[prop] && !(prop in data)) data[prop] = commit.date();
+                    if (datesToAdd[prop] && !(`${prop}-commit` in data)) data[`${prop}-commit`] = commit.sha();
+                }
 
                 // Save
                 eipInfo[eip] = {
