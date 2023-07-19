@@ -1,6 +1,7 @@
 import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
 import Git from 'nodegit';
+import AsyncLock from 'async-lock';
 
 // Generate js-yaml engine that will never throw an error
 
@@ -72,6 +73,8 @@ let repo = await Git.Repository.open("./.git/modules/EIPs");
 let eipInfo = {}; // EIP "number" => gray-matter data and content
 let aliases = {}; // Alias => EIP "number"
 
+let canSkipEip = {}; // Set to true once we've got all the data we need for an EIP
+
 let commit = await repo.getHeadCommit();
 
 // Walk it back
@@ -119,105 +122,78 @@ while (commit) {
             if (oldEip == newEip) continue; // Ignore renames that don't change the EIP number, if this ever happens
             if (oldEip && !(oldEip in aliases)) aliases[oldEip] = newEip;
         }
-        // If an EIP is added or modified, and does not have an alias, initialize its gray matter data, and add necessary fields
+        // Process the files
         await Promise.all(added.concat(modified).map(async (patch) => {
-            let eip = getEipNumber(patch.newFile().path());
-            if (eip && !(eip in aliases) && !(eip in eipInfo)) {
-                // Read the file's contents
-                let objectId = patch.newFile().id();
-                let blob = await repo.getBlob(objectId);
-                let content = blob.toString();
-                let gm = grayMatter(content, {
-                    engines: {
-                        yaml: yamlEngine
-                    }
-                });
-
-                if (gm == null) {
-                    return; // An error occurred while parsing the yaml, skip this file
-                }
-
-                // Add missing fields
-                let data = gm.data;
-                data['last-updated'] = commit.date();
-                data['last-updated-commit'] = commit.sha();
-                if (!data['eip']) data['eip'] = eip;
-                gm.data = data;
-
-                // Save
-                eipInfo[eip] = gm;
-            }
-        }));
-
-        // Add-only cases
-        await Promise.all(added.map(async (patch) => {
             let eip = getEipNumber(patch.newFile().path());
             while (eip in aliases) {
                 eip = aliases[eip];
             }
-            if (eip && eip in eipInfo) {
-                // Read the file's contents
-                let objectId = patch.newFile().id();
-                let blob = await repo.getBlob(objectId);
-                let content = blob.toString();
-                let gm = grayMatter(content, {
-                    engines: {
-                        yaml: yamlEngine
-                    }
-                });
+            if (canSkipEip[eip]) return; // We've already got all the data we need for this EIP
+            if (eip) {
+                // Initialize the gray matter data
+                let gmNew, gmOld = null;
 
-                if (gm == null) {
-                    return; // An error occurred while parsing the yaml, skip this file
-                }
-
-                // Add missing fields
-                let data = eipInfo[eip].data;
-                if (['Final', 'Living'].includes(gm.data['status'])) data['finalized'] = commit.date();
-                if (!data['last-status-change']) data['last-status-change'] = commit.date();
-                if (!data['created']) data['created'] = commit.date();
-                if (!data['created-commit']) data['created-commit'] = commit.sha();
-
-                // Save
-                eipInfo[eip].data = data;
-            }
-        }));
-
-        // Modify-only cases
-        await Promise.all(modified.map(async (patch) => {
-            let eip = getEipNumber(patch.newFile().path());
-            while (eip in aliases) eip = aliases[eip];
-            if (eip && eip in eipInfo) {
                 // Read both files' contents
                 let objectIdNew = patch.newFile().id();
                 let blobNew = await repo.getBlob(objectIdNew);
                 let contentNew = blobNew.toString();
-
-                let objectIdOld = patch.oldFile().id();
-                let blobOld = await repo.getBlob(objectIdOld);
-                let contentOld = blobOld.toString();
-
-                let gmNew = grayMatter(contentNew, {
-                    engines: {
-                        yaml: yamlEngine
-                    }
-                });
-                let gmOld = grayMatter(contentOld, {
+                gmNew = grayMatter(contentNew, {
                     engines: {
                         yaml: yamlEngine
                     }
                 });
 
-                if (gmNew == null || gmOld == null) {
+                if (!patch.isAdded()) {
+                    let objectIdOld = patch.oldFile().id();
+                    let blobOld = await repo.getBlob(objectIdOld);
+                    let contentOld = blobOld.toString();
+                    gmOld = grayMatter(contentOld, {
+                        engines: {
+                            yaml: yamlEngine
+                        }
+                    });
+                }
+
+                if (gmNew == null && !patch.isAdded()) {
                     return; // An error occurred while parsing the yaml, skip this file
                 }
 
                 // Add missing fields
-                let data = eipInfo[eip].data;
-                if (['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld.data['status']))) data['finalized'] = commit.date();
-                if (!data['last-status-change'] && gmNew.data['status'] != gmOld.data['status']) data['last-status-change'] = commit.date();
+                let data = eipInfo[eip]?.data ?? gmNew.data;
+                if (
+                    !('eip' in data)
+                ) data['eip'] = eip;
+                if (
+                    !('last-updated' in data)
+                ) data['last-updated'] = commit.date();
+                if (
+                    !('created' in data) &&
+                    patch.isAdded()
+                ) data['created'] = commit.date();
+                if (
+                    !('last-status-change' in data) &&
+                    gmNew.data['status'] != gmOld?.data?.['status']
+                ) data['last-status-change'] = commit.date();
+                if (
+                    !('finalized' in data) &&
+                    ['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld?.data?.['status']))
+                ) data['finalized'] = commit.date();
 
                 // Save
-                eipInfo[eip].data = data;
+                eipInfo[eip] = {
+                    data,
+                    content: eipInfo[eip]?.content ?? gmNew.content
+                };
+
+                // If we have all the data we need, we can skip this EIP future commits
+                if (
+                    ('eip' in data) &&
+                    ('last-updated' in data) &&
+                    ('created' in data) &&
+                    ('last-status-change' in data) &&
+                    ('finalized' in data || !(['Final', 'Living'].includes(data['status']))) &&
+                    ('type' in data) // Something that can only be fetched from the front matter, to make sure that it's been parsed
+                ) canSkipEip[eip] = true;
             }
         }));
     } catch (e) {
