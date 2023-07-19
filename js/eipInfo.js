@@ -134,6 +134,7 @@ for (commit of allCommits) {
                 eip = aliases[eip];
             }
             if (canSkipEip[eip]) return; // We've already got all the data we need for this EIP
+            let isAdded = patch.isAdded();
             if (eip) {
                 // Initialize the gray matter data
                 let gmNew, gmOld = null;
@@ -148,7 +149,11 @@ for (commit of allCommits) {
                     }
                 });
 
-                if (!patch.isAdded()) {
+                if (gmNew == null) return; // An error occurred while parsing the yaml, skip this file
+
+                let needFetchOld = !isAdded && (!gmNew.data['last-status-change'] || (['Final', 'Living'].includes(gmNew.data['status']) && !gmNew.data['finalized']));
+
+                if (needFetchOld) {
                     let objectIdOld = patch.oldFile().id();
                     let blobOld = await repo.getBlob(objectIdOld);
                     let contentOld = blobOld.toString();
@@ -159,9 +164,7 @@ for (commit of allCommits) {
                     });
                 }
 
-                if (gmNew == null && !patch.isAdded()) {
-                    return; // An error occurred while parsing the yaml, skip this file
-                }
+                let canUseOld = isAdded || gmOld != null;
 
                 // Add missing fields
                 let data = eipInfo[eip]?.data ?? gmNew.data;
@@ -170,13 +173,15 @@ for (commit of allCommits) {
 
                 let datesToAdd = {
                     'last-updated': true,
-                    'created': patch.isAdded(),
-                    'last-status-change': gmNew.data['status'] != gmOld?.data?.['status'],
-                    'finalized': ['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld?.data?.['status'])),
+                    'created': isAdded,
+                    'last-status-change': gmNew.data['status'] != gmOld?.data?.['status'] && canUseOld,
+                    'finalized': ['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld?.data?.['status'])) && canUseOld,
                 };
+                let theDate = commit.date();
+                let theSha = commit.sha();
                 for (let prop in datesToAdd) {
-                    if (datesToAdd[prop] && !(prop in data)) data[prop] = commit.date();
-                    if (datesToAdd[prop] && !(`${prop}-commit` in data)) data[`${prop}-commit`] = commit.sha();
+                    if (datesToAdd[prop] && !(prop in data)) data[prop] = theDate;
+                    if (datesToAdd[prop] && !(`${prop}-commit` in data)) data[`${prop}-commit`] = theSha;
                 }
 
                 // Save
