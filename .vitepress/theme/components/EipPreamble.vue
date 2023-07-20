@@ -59,7 +59,7 @@ import DefaultTheme from 'vitepress/theme'; // Gets rid of compiler error for $f
             <tbody>
                 <tr>
                     <th>Authors</th>
-                    <td v-html="$frontmatter?.authorData?.map(author => author.name + (author.email ? ` \<<a href='mailto:${author.email}'>${author.email}</a>\>` : (author.github ? ` (<a href='https://github.com/${author.github}'>@${author.github}</a>)` : ''))).join(', ')"></td>
+                    <td v-html="$frontmatter?.author?.map(author => author.name + (author.email ? ` \<<a href='mailto:${author.email}'>${author.email}</a>\>` : '') + (author.github ? ` (<a href='https://github.com/${author.github}'>@${author.github}</a>)` : '')).join(', ')"></td>
                 </tr>
                 <tr v-if="$frontmatter.finalized">
                     <th>Finalized</th>

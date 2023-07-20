@@ -197,7 +197,7 @@ export default defineConfig({
                             eip: eip.eip,
                             title: eip.title,
                             status: eip.status,
-                            authorData: eip.authorData,
+                            author: eip.author,
                         };
                     });
                     logger.info(`Transformed ${pageData.relativePath} (listing page)`, { timestamp: true });
