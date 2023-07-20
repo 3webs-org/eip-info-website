@@ -23,7 +23,8 @@ jobs:
           - name: Use Node.js
             uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8  # v3.7.0
             with:
-                node-version: 18.x
+                node-version: 16.x
+                cache: false
 
           - name: Install dependencies
             run: npm ci
