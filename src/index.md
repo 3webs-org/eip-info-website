@@ -5,7 +5,7 @@ hero:
   name: Ethereum Improvement Proposals
   tagline: EIPs describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.
   image:
-    src: /assets/website/ethereum-logo.svg
+    src: /img/ethereum-logo.svg
     alt: Ethereum logo
   actions:
     - theme: brand
