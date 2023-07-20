@@ -40,7 +40,17 @@ jobs:
               sudo apt-get update -y
               sudo apt-get install -y libkrb5-dev
 
-          - name: Install dependencies
+          - name: Cache Dependencies
+            id: cache-npm-packages
+            uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+            env:
+              cache-name: cache-node-packages
+            with:
+              path: ~/.npm
+              key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }}
+
+          - name: Install Dependencies
+            if: ${{ steps.cache-npm-packages.outputs.cache-hit != 'true' }}
             run: npm ci
 
           - name: Build
