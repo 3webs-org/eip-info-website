@@ -12,6 +12,11 @@ on:
         branches:
           - main
 
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
 jobs:
     build:
         name: Build
@@ -27,19 +32,31 @@ jobs:
             uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8  # v3.7.0
             with:
                 node-version: 18.x
-                cache: npm
-                cache-dependency-path: package-lock.json
         
           - name: Install apt packages
             run: |
               sudo apt-get update -y
               sudo apt-get install -y libkrb5-dev
 
-          - name: Install dependencies
+          - name: Cache node_modules
+            id: cache-npm-packages
+            uses: actions/cache@88522ab9f39a2ea568f7027eddc7d8d8bc9d59c8 # v3.3.1
+            env:
+              cache-name: cache-node_modules
+            with:
+              path: node_modules
+              key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }}
+
+          - name: Install Dependencies
+            if: ${{ steps.cache-npm-packages.outputs.cache-hit != 'true' }}
             run: npm ci
 
           - name: Build
             run: npm run build
+
+          - name: Setup Pages
+            if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+            uses: actions/configure-pages@f156874f8191504dae5b037505266ed5dda6c382 # v3.0.6
 
           - name: Upload artifact
             uses: actions/upload-pages-artifact@a753861a5debcf57bf8b404356158c8e1e33150c  # v2.0.0
