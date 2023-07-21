@@ -32,11 +32,6 @@ jobs:
             uses: actions/setup-node@e33196f7422957bea03ed53f6fbb155025ffc7b8  # v3.7.0
             with:
                 node-version: 18.x
-        
-          - name: Install apt packages
-            run: |
-              sudo apt-get update -y
-              sudo apt-get install -y libkrb5-dev
 
           - name: Cache node_modules
             id: cache-npm-packages
@@ -46,6 +41,12 @@ jobs:
             with:
               path: node_modules
               key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }}
+
+          - name: Install apt packages
+            if: ${{ steps.cache-npm-packages.outputs.cache-hit != 'true' }}
+            run: |
+              sudo apt-get update -y
+              sudo apt-get install -y libkrb5-dev
 
           - name: Install Dependencies
             if: ${{ steps.cache-npm-packages.outputs.cache-hit != 'true' }}
