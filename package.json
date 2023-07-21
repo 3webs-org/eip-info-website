@@ -5,9 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vitepress dev",
-    "build": "vitepress build",
-    "preview": "vitepress preview",
-    "fix-memory-limit": "cross-env LIMIT=4096 increase-memory-limit"
+    "build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 vitepress build",
+    "preview": "vitepress preview"
   },
   "repository": {
     "type": "git",
@@ -22,7 +21,6 @@
     "cross-env": "^7.0.0",
     "feed": "^4.2.2",
     "gray-matter": "^4.0.3",
-    "increase-memory-limit": "^1.0.3",
     "js-yaml": "^4.1.0",
     "nodegit": "^0.27.0",
     "vite-logger": "^0.0.1",

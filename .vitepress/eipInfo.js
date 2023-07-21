@@ -262,12 +262,20 @@ for (let eip in eipInfo) {
     }
 }
 
-// TODO: Temporarily nuke EIPs that are confirmed to break the build, as well as all unconfirmed EIPs
-for (let eip in eipInfo) {
-    if (parseInt(eip) != eip || parseInt(eip) < 5883) {
-        delete eipInfo[eip];
-    }
-}
+delete eipInfo['210']; // Can be removed once https://github.com/ethereum/EIPs/pull/7370 is merged
+delete eipInfo['777']; // Can be removed once https://github.com/ethereum/EIPs/pull/7371 is merged
+
+delete eipInfo['820']; // Invalid / in tag???
+delete eipInfo['1820']; // Same here - 1820 is a fork of 820 so not surprising
+
+delete eipInfo['1175'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7372 is merged
+delete eipInfo['1438'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7373 is merged
+delete eipInfo['1613'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7374 is merged
+delete eipInfo['2025'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7375 is merged
+delete eipInfo['2535'] // Doesn't use relative links.
+
+delete eipInfo['1822'] // Could not resolve "../assets/eip-1822/proxy-diagram.png" from "src/eip/1822.md"
+delete eipInfo['3450'] // Could not resolve "./../assets/eip-3450/lagrange.gif" from "src/eip/3450.md"
 
 // Rewrite links
 for (let eip in eipInfo) {
@@ -276,7 +284,7 @@ for (let eip in eipInfo) {
     let regex = /\[([^\]]*)\]\(([^)]+)\)/g;
     let match;
     while ((match = regex.exec(content)) != null) {
-        if (match[2].startsWith("../assets/eip-")) {
+        if (match[2].toLowerCase().startsWith("../assets/eip-")) {
             // ../assets/eip-<eip>/<assetPa/th>
             let assetPath = `../public/eip/${eip}/${match[2].substring(15 + eip.length)}`;
             content = content.replace(match[0], `[${match[1]}](${assetPath})`);
@@ -288,8 +296,6 @@ for (let eip in eipInfo) {
         } else if (match[2].startsWith("../config/")) {
             // Strip the link. It ain't needed. Why do you have to do this to me, EIP-7329?
             content = content.replace(match[0], match[1]);
-        } else if (match[2].startsWith('.')) {
-            throw new Error(`Unknown link: ${match[2]} at EIP ${eip}`);
         }
     }
     // Reassign
