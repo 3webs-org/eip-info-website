@@ -48,7 +48,6 @@ jobs:
               key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('package-lock.json') }}
 
           - name: Install Dependencies
-            if: ${{ steps.cache-npm-packages.outputs.cache-hit != 'true' }}
             run: npm ci
 
           - name: Build
