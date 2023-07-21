@@ -268,7 +268,6 @@ for (let eip in eipInfo) {
         delete eipInfo[eip];
     }
 }
-delete eipInfo['5988'];
 
 // Rewrite links
 for (let eip in eipInfo) {
