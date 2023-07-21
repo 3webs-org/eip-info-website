@@ -231,6 +231,9 @@ for (let eip in eipInfo) {
         // Load the data
         let data = eipInfo[eip].data;
 
+        // Transform title
+        if (data['title']) data['title'] = `${data['category'] == 'ERC' ? 'ERC' : 'EIP'}-${eip}: ${data['title']}`
+
         // Transform authors
         if (data['author']) data['author'] = await parseAuthorData(data['author']);
 
