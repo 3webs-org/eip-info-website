@@ -1,7 +1,5 @@
 ---
-title: {{ $params.typeTitleCase }}
-listing: true
-filter: {{ $params.filter }}
+title: {{ $params.title }}
 ---
 
 <!-- markdownlint-disable no-inline-html -->

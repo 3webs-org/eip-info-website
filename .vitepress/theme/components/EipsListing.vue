@@ -15,7 +15,7 @@ const allStatuses = [ 'Living', 'Last Call', 'Final', 'Review', 'Draft', 'Withdr
 for (let status of [...new Set(filteredEips.map(eip => eip.status))]) {
     // If there's a new status, display warning
     if (!allStatuses.includes(status)) {
-        throw new Error(`Unknown status: ${status}`);
+        throw new Error(`Unknown status: ${status} with EIPs: ${filteredEips.filter(eip => eip.status == status).map(eip => eip.eip)}`);
     }
 }
 </script>

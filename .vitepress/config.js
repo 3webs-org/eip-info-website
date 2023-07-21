@@ -5,7 +5,10 @@ import { createLogger } from 'vite-logger';
 import { Feed } from 'feed';
 import { defineConfig } from 'vitepress';
 
-import config from "../js/config.js";
+// Get the options
+
+import options from './options.js';
+import eips, { aliases } from './eipInfo.js';
 
 const logger = createLogger('info', true);
 
@@ -32,7 +35,7 @@ async function preBuild() {
         let eip = asset.split('/')[0].replace('eip-', '');
         let assetPath = asset.split('/').slice(1).join('/');
         let assetPathParent = assetPath.split('/').slice(0, -1).join('/');
-        if (!(eip in config.eips)) {
+        if (!(eip in eips)) {
             return; // Skip if EIP not found (e.g. assets/css)
         }
         await fs.mkdir(`./src/public/eip/${eip}/${assetPathParent}`, { recursive: true });
@@ -110,10 +113,10 @@ export default defineConfig({
                 if (!eip) {
                     throw new Error(`EIP ${pageData.relativePath} not found`);
                 }
-                if (!(eip in config.eips)) {
+                if (!(eip in eips)) {
                     throw new Error(`EIP ${eip} not found`);
                 }
-                let eipData = config.eips[eip];
+                let eipData = eips[eip];
                 let frontmatter = eipData.data;
     
                 return [
@@ -178,30 +181,30 @@ export default defineConfig({
                 if (!eip) {
                     throw new Error(`EIP ${pageData.relativePath} not found`);
                 }
-                if (!(eip in config.eips)) {
+                if (!(eip in eips)) {
                     throw new Error(`EIP ${eip} not found`);
                 }
-                let eipData = config.eips[eip];
+                let eipData = eips[eip];
                 let frontmatter = eipData.data;
                 pageData.frontmatter = frontmatter;
 
                 logger.info(`Transformed ${pageData.relativePath} (EIP)`, { timestamp: true });
                 return pageData;
-            } else if (pageData.frontmatter.listing) {
+            } else if (pageData?.params?.listing) {
                 pageData = { ...pageData };
-                if (pageData.filter !== undefined) {
-                    pageData.frontmatter.filteredEips = Object.values(config.eips).filter(eip => {
-                        return Object.keys(pageData.frontmatter.filter).every(key => pageData.frontmatter.filter[key].includes(eip[key]));
+                if (pageData.params?.filter !== undefined) {
+                    pageData.frontmatter.filteredEips = Object.values(eips).filter(eip => {
+                        return Object.keys(pageData?.params?.filter).every(key => pageData.params.filter[key].includes(eip[key]));
                     }).map(eip => {
                         return {
-                            eip: eip.eip,
-                            title: eip.title,
-                            status: eip.status,
-                            author: eip.author,
+                            eip: eip.data.eip,
+                            title: eip.data.title,
+                            status: eip.data.status,
+                            author: eip.data.author,
                         };
                     });
-                    logger.info(`Transformed ${pageData.relativePath} (listing page)`, { timestamp: true });
                 }
+                logger.info(`Transformed ${pageData.relativePath} (listing page)`, { timestamp: true });
 
                 return pageData;
             } else {
@@ -230,8 +233,8 @@ export default defineConfig({
             copyright: 'CC0 1.0 Universal (Public Domain)',
         });
 
-        for (let eip in config.eips) {
-            let fm = config.eips[eip].data;
+        for (let eip in eips) {
+            let fm = eips[eip].data;
 
             if (
                 !('title' in fm) ||
@@ -262,7 +265,7 @@ export default defineConfig({
                         domain: `${url}/status`
                     }
                 ],
-                content: config.eips[eip].content,
+                content: eips[eip].content,
                 guid: eip,
             });
         }

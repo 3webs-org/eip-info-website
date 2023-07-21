@@ -1,4 +1,4 @@
-import config from "../../js/config.js";
+import options from "../../.vitepress/options.js";
 
 export default {
     paths() {
@@ -7,34 +7,41 @@ export default {
         paths.push({
             params: {
                 type: "all",
-                typeTitleCase: "All",
+                title: "All",
+                listing: true,
                 filter: {}
             }
         })
         // Types
-        for (let type of config.types) {
-            if (!(type in config.categories)) {
+        for (let type of options.types) {
+            if (!(type in options.categories)) {
                 paths.push({
                     params: {
                         type: type.toLowerCase().replace(' ', '-'),
-                        typeTitleCase: type,
+                        title: type,
+                        listing: true,
                         filter: {
-                            "type": type
+                            "type": [
+                                type
+                            ]
                         }
                     }
                 })
             }
         }
         // Categories
-        for (let type of config.types) {
-            if (type in config.categories) {
-                for (let category of config.categories[type]) {
+        for (let type of options.types) {
+            if (type in options.categories) {
+                for (let category of options.categories[type]) {
                     paths.push({
                         params: {
                             type: category.toLowerCase().replace(' ', '-'),
-                            typeTitleCase: category.split(' ').map(w => w[0].toUpperCase() + w.substring(1).toLowerCase()).join(' '),
+                            title: category.split(' ').map(w => w[0].toUpperCase() + w.substring(1).toLowerCase()).join(' '),
+                            listing: true,
                             filter: {
-                                "category": category
+                                "category": [
+                                    category
+                                ]
                             }
                         }
                     })

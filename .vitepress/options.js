@@ -1,5 +1,3 @@
-import eipInfo, { aliases } from './eipInfo.js';
-
 export default {
     "statuses": [
         "Living", "Last Call", "Final", "Review", "Draft", "Stagnant", "Withdrawn"
@@ -17,6 +15,4 @@ export default {
             "Networking",
         ],
     },
-    "eips": eipInfo,
-    "aliases": aliases,
 };
