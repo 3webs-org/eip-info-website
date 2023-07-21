@@ -33,7 +33,7 @@ for (let status of [...new Set(filteredEips.map(eip => eip.status))]) {
                 <tbody>
                     <tr v-for="eip of filteredEips.filter(eip => eip.status == status)">
                         <td><a :href="`../eip/${eip.eip}`">{{ eip.title }}</a></td>
-                        <td>{{ eip?.author.map(author => author.name).join(', ') }}</td>
+                        <td>{{ eip?.author?.map(author => author.name)?.join(', ') }}</td>
                     </tr>
                 </tbody>
             </table>
