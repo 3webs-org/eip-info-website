@@ -194,7 +194,7 @@ export default defineConfig({
                 pageData = { ...pageData };
                 if (pageData.params?.filter !== undefined) {
                     pageData.frontmatter.filteredEips = Object.values(eips).filter(eip => {
-                        return Object.keys(pageData?.params?.filter).every(key => pageData.params.filter[key].includes(eip[key]));
+                        return Object.keys(pageData?.params?.filter).every(key => pageData.params.filter[key].includes(eip.data[key]));
                     }).map(eip => {
                         return {
                             eip: eip.data.eip,
