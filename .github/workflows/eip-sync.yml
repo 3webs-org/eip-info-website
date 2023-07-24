@@ -22,7 +22,7 @@ jobs:
               private_key: ${{ secrets.SUBMODULE_UPDATE_PRIVATE_KEY }}
         
           - name: Submodule Sync
-            uses: mheap/submodule-sync-action@8e722db899191b01274589b07e7e45e6bc61dc60 # v1.4.0
+            uses: mheap/submodule-sync-action@a06903a4e38f042f6f52cc88d184ec1c930ee12d # v1.4.1
             if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
             with:
                 token: "${{ steps.fetch_jwt.outputs.token }}"
