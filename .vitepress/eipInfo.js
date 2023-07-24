@@ -263,7 +263,6 @@ for (let eip in eipInfo) {
 }
 
 delete eipInfo['210']; // Can be removed once https://github.com/ethereum/EIPs/pull/7370 is merged
-delete eipInfo['777']; // Can be removed once https://github.com/ethereum/EIPs/pull/7371 is merged
 
 delete eipInfo['820']; // Invalid / in tag???
 delete eipInfo['1820']; // Same here - 1820 is a fork of 820 so not surprising
@@ -274,6 +273,7 @@ delete eipInfo['1613'] // Doesn't use relative links. Can be removed once https:
 delete eipInfo['2025'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7375 is merged
 delete eipInfo['2535'] // Doesn't use relative links.
 
+delete eipInfo['777']  // Could not resolve "./../assets/eip-777/logo/png/ERC-777-logo-beige-48px.png" from "src/eip/777.md"
 delete eipInfo['1822'] // Could not resolve "../assets/eip-1822/proxy-diagram.png" from "src/eip/1822.md"
 delete eipInfo['3450'] // Could not resolve "./../assets/eip-3450/lagrange.gif" from "src/eip/3450.md"
 
