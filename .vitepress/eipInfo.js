@@ -262,7 +262,6 @@ for (let eip in eipInfo) {
     }
 }
 
-delete eipInfo['210']; // Can be removed once https://github.com/ethereum/EIPs/pull/7370 is merged
 delete eipInfo['777']; // Can be removed once https://github.com/ethereum/EIPs/pull/7371 is merged
 
 delete eipInfo['820']; // Invalid / in tag???
