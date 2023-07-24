@@ -263,7 +263,6 @@ for (let eip in eipInfo) {
 }
 
 delete eipInfo['210']; // Can be removed once https://github.com/ethereum/EIPs/pull/7370 is merged
-delete eipInfo['777']; // Can be removed once https://github.com/ethereum/EIPs/pull/7371 is merged
 
 delete eipInfo['820']; // Invalid / in tag???
 delete eipInfo['1820']; // Same here - 1820 is a fork of 820 so not surprising
