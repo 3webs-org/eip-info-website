@@ -75,9 +75,11 @@ export default defineConfig({
                      */
                     searchOptions: {
                         fields: ['eip', 'title'],
-                        boostDocument: function (documentId, term, storedFields) {
-                            console.log(documentId, term, storedFields);
-                            return 1;
+                        boostDocument: function (documentId, term, storedFields) { // Only show EIPs
+                            if (/^\/eip\/\w+[^/]+$/.test(documentId)) {
+                                return 1;
+                            }
+                            return 0;
                         }
                     }
                 }
