@@ -273,7 +273,7 @@ export default defineConfig({
         // Export the feed
         await fs.writeFile(`./.vitepress/dist/eips.atom`, feed.atom1());
     },
-    mpa: true,
+    mpa: false,
     rewrites: {
         'public/:path*': '/:path*',
     },
