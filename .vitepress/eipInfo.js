@@ -265,7 +265,6 @@ for (let eip in eipInfo) {
 delete eipInfo['820']; // Invalid / in tag???
 delete eipInfo['1820']; // Same here - 1820 is a fork of 820 so not surprising
 
-delete eipInfo['1438'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7373 is merged
 delete eipInfo['1613'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7374 is merged
 delete eipInfo['2025'] // Doesn't use relative links. Can be removed once https://github.com/ethereum/EIPs/pull/7375 is merged
 delete eipInfo['2535'] // Doesn't use relative links.
