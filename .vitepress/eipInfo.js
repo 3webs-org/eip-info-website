@@ -275,7 +275,7 @@ delete eipInfo['3450'] // Could not resolve "./../assets/eip-3450/lagrange.gif" 
 for (let eip in eipInfo) {
     let content = eipInfo[eip].content;
     // Regex to match links
-    let regex = /\[([^\]]*)\]\(([^)]+)\)/g;
+    let regex = /(?<!!)\[([^\]]*)\]\(([^)]+)\)/g;
     let match;
     while ((match = regex.exec(content)) != null) {
         if (match[2].toLowerCase().startsWith("../assets/eip-")) {
@@ -290,6 +290,15 @@ for (let eip in eipInfo) {
         } else if (match[2].startsWith("../config/")) {
             // Strip the link. It ain't needed. Why do you have to do this to me, EIP-7329?
             content = content.replace(match[0], match[1]);
+        }
+    }
+    // Regex to match images
+    regex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    while ((match = regex.exec(content)) != null) {
+        if (match[2].toLowerCase().startsWith("../assets/eip-")) {
+            // ../assets/eip-<eip>/<assetPa/th>
+            let assetPath = `./${eip}/${match[2].substring(15 + eip.length)}`;
+            content = content.replace(match[0], `![${match[1]}](${assetPath})`);
         }
     }
     // Reassign
