@@ -1,6 +1,8 @@
 import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
-import Git from 'nodegit';
+import git from 'isomorphic-git';
+import fs from 'node:fs';
+import http from 'node:http';
 
 // Generate js-yaml engine that will never throw an error
 
@@ -67,7 +69,11 @@ async function parseAuthorData(authorData) {
     return authors;
 }
 
-let repo = await Git.Repository.open("./.git/modules/EIPs");
+let repo = git.clone({
+    fs,
+    http,
+
+});
 
 let eipInfo = {}; // EIP "number" => gray-matter data and content
 let aliases = {}; // Alias => EIP "number"
