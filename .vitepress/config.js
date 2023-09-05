@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createLogger } from 'vite-logger';
 import { Feed } from 'feed';
 import { defineConfig } from 'vitepress';
+import { withPwa } from '@vite-pwa/vitepress';
 
 // Get the options
 
@@ -45,7 +46,7 @@ async function preBuild() {
 
 await preBuild();
 
-export default defineConfig({
+export default withPwa(defineConfig({
     srcDir: './src',
     title: 'Ethereum Improvement Proposals',
     description: 'Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.',
@@ -280,4 +281,30 @@ export default defineConfig({
         'public/:path*': '/:path*',
     },
     ignoreDeadLinks: true,
-});
+    pwa: {
+        injectRegister: 'script',
+        workbox: {
+            globPatterns: ['EIPS/*', '**/*.{js,css,html}'] // Items to save to offline cache
+        },
+        manifest: {
+            "name": "Ethereum Improvement Proposals",
+            "short_name": "EIPs",
+            "description": "Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.",
+            "icons": [
+                {
+                    "src": "/img/android-chrome-192x192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "/img/android-chrome-512x512.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ],
+            "theme_color": "#ffffff",
+            "background_color": "#ffffff",
+            "display": "standalone"
+        }
+    }
+}));
