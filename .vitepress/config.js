@@ -289,17 +289,20 @@ export default withPwa(defineConfig({
         manifest: {
             "name": "Ethereum Improvement Proposals",
             "short_name": "EIPs",
+            "start_url": "/",
             "description": "Ethereum Improvement Proposals (EIPs) describe standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards.",
             "icons": [
                 {
                     "src": "/img/android-chrome-192x192.png",
                     "sizes": "192x192",
-                    "type": "image/png"
+                    "type": "image/png",
+                    "purpose": "any maskable"
                 },
                 {
                     "src": "/img/android-chrome-512x512.png",
                     "sizes": "512x512",
-                    "type": "image/png"
+                    "type": "image/png",
+                    "purpose": "any maskable"
                 }
             ],
             "theme_color": "#ffffff",
