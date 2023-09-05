@@ -262,9 +262,6 @@ for (let eip in eipInfo) {
     }
 }
 
-delete eipInfo['820']; // Invalid / in tag???
-delete eipInfo['1820']; // Same here - 1820 is a fork of 820 so not surprising
-
 delete eipInfo['2535'] // Doesn't use relative links.
 
 delete eipInfo['777']  // Could not resolve "./../assets/eip-777/logo/png/ERC-777-logo-beige-48px.png" from "src/eip/777.md"
