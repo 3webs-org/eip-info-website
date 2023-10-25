@@ -21,19 +21,35 @@ jobs:
               app_id: ${{ secrets.SUBMODULE_UPDATE_APP_ID }}
               private_key: ${{ secrets.SUBMODULE_UPDATE_PRIVATE_KEY }}
         
-          - name: Submodule Sync
+          - name: EIPs Submodule Sync
             uses: mheap/submodule-sync-action@a06903a4e38f042f6f52cc88d184ec1c930ee12d # v1.4.1
             if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
             with:
                 token: "${{ steps.fetch_jwt.outputs.token }}"
                 path: EIPs
                 ref: master
-                pr_branch: automated-submodule-update
+                pr_branch: eips-automated-submodule-update
                 target_branch: main
 
-          - name: Submodule Auto Merge
+          - name: EIPs Submodule Auto Merge
             uses: alexwilson/enable-github-automerge-action@c639c60a428a35aea587f0163bcb8d0ed2097538  # 1.0.0
-            if: github.event_name == 'pull_request_target' && github.head_ref == 'automated-submodule-update' && github.event.pull_request.user.login == 'submodule-update[bot]'
+            if: github.event_name == 'pull_request_target' && github.head_ref == 'eips-automated-submodule-update' && github.event.pull_request.user.login == 'submodule-update[bot]'
+            with:
+                github-token: "${{ steps.fetch_jwt.outputs.token }}"
+        
+          - name: ERCs Submodule Sync
+            uses: mheap/submodule-sync-action@a06903a4e38f042f6f52cc88d184ec1c930ee12d # v1.4.1
+            if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+            with:
+                token: "${{ steps.fetch_jwt.outputs.token }}"
+                path: EIPs
+                ref: master
+                pr_branch: ercs-automated-submodule-update
+                target_branch: main
+
+          - name: ERCs Submodule Auto Merge
+            uses: alexwilson/enable-github-automerge-action@c639c60a428a35aea587f0163bcb8d0ed2097538  # 1.0.0
+            if: github.event_name == 'pull_request_target' && github.head_ref == 'ercs-automated-submodule-update' && github.event.pull_request.user.login == 'submodule-update[bot]'
             with:
                 github-token: "${{ steps.fetch_jwt.outputs.token }}"
                 
