@@ -69,29 +69,167 @@ async function parseAuthorData(authorData) {
     return authors;
 }
 
-let repo = git.clone({
+async function getFileStateChanges({
     fs,
-    http,
+    dir,
+    gitdir,
+    commitHash1,
+    commitHash2
+}) {
+    return git.walk({
+        fs,
+        dir,
+        gitdir,
+        trees: [git.TREE({ ref: commitHash1 }), git.TREE({ ref: commitHash2 })],
+        map: async function(filepath, [A, B]) {
+            // ignore directories
+            if (filepath === '.') {
+                return
+            }
+            if ((await A.type()) === 'tree' || (await B.type()) === 'tree') {
+                return
+            }
+  
+            // generate ids
+            const Aoid = await A.oid()
+            const Boid = await B.oid()
+  
+            // determine modification type
+            let type = 'equal'
+            if (Aoid !== Boid) {
+                type = 'modify'
+            }
+            if (Aoid === undefined) {
+                type = 'add'
+            }
+            if (Boid === undefined) {
+                type = 'remove'
+            }
+            if (Aoid === undefined && Boid === undefined) {
+                console.log('Something weird happened:')
+                console.log(A)
+                console.log(B)
+            }
+  
+            return {
+                path: `/${filepath}`,
+                type: type,
+            }
+        },
+    })
+}
 
-});
+let dir = "EIPS";
+let gitdir = "./.git/modules/EIPs";
 
 let eipInfo = {}; // EIP "number" => gray-matter data and content
 let aliases = {}; // Alias => EIP "number"
 
 let canSkipEip = {}; // Set to true once we've got all the data we need for an EIP
 
-let commit = await repo.getHeadCommit();
+let files = await git.listFiles({ fs, dir, gitdir });
 
-let allCommits = [];
-while (commit) {
-    allCommits.push(commit);
-    commit = await commit.getParents().then(parents => parents[0]);
+let textDecoder = new TextDecoder("utf-8");
+
+for (let file of files) {
+    let eip = getEipNumber(file);
+    if (!eip) continue; // Ignore non-EIP files
+
+    // Get log for this file
+    let log = await git.log({ fs, dir, gitdir, filepath: file, follow: true });
+
+    // Sort log, descending by timestamp
+    log.sort((a, b) => b.committer.timestamp - a.committer.timestamp);
+
+    // Track filepath
+    let filepath = file;
+
+    let lastCommit = null;
+
+    for (let commit of log) {
+        // Get file status changes
+        let fileStateChanges = await getFileStateChanges({
+            fs,
+            dir,
+            gitdir,
+            commitHash1: commit.oid,
+            commitHash2: commit.parents[0]?.oid
+        });
+
+        // If the file was renamed, update the filepath
+        // TODO: There has to be a better way to do this
+        let additions = fileStateChanges.filter(change => change.type == 'add');
+        let removals = fileStateChanges.filter(change => change.type == 'remove');
+        if (additions.length == 1 && removals.length == 1) {
+            filepath = additions[0].path; // Since this is in our log, we know that the file was renamed
+        } else if (removals.filter(change => change.path == filepath).length == 1) break; // If the file was deleted, break
+
+        // Get the file contents
+        let { blob } = await git.readBlob({ fs, dir, gitdir, oid: commit.oid, filepath });
+
+        // Turn Uint8Array into string
+        let content = textDecoder.decode(blob);
+
+        // Parse the front matter
+        let gm = grayMatter(content, {
+            engines: {
+                yaml: yamlEngine
+            }
+        });
+
+        // If the front matter is invalid, skip this commit
+        if (gm == null) continue;
+
+        // Get existing data
+        let data = eipInfo[eip]?.data ?? gm.data;
+
+        // Add missing fields
+        if (!('eip' in data)) data['eip'] = eip;
+        
+        let datesToAdd = {
+            'last-updated': true,
+            'created': commit.oid == log[log.length - 1].oid,
+            'last-status-change': gm.data['status'] != eipInfo[eip]?.data?.['status'] && eipInfo[eip]?.data?.['status'] != null,
+            'finalized': ['Final', 'Living'].includes(gm.data['status']) && !(['Final', 'Living'].includes(eipInfo[eip]?.data?.['status'])) && eipInfo[eip]?.data?.['status'] != null,
+        };
+
+        let theDate = commit.committer.timestamp * 1000;
+        let theSha = commit.oid;
+        for (let prop in datesToAdd) {
+            if (datesToAdd[prop] && !(prop in data)) data[prop] = theDate;
+            if (datesToAdd[prop] && !(`${prop}-commit` in data)) data[`${prop}-commit`] = theSha;
+        }
+
+        lastCommit = commit;
+    }
 }
+
+
+let allCommits = await git.log({
+    fs,
+    dir,
+    gitdir
+});
+
+// Sort descending by timestamp
+allCommits.sort((a, b) => b.committer.timestamp - a.committer.timestamp);
 
 // Walk it back
 for (commit of allCommits) {
     try {
         // Get the changes made in this commit
+        let tree = await commit.getTree({
+            fs,
+            dir,
+            gitdir,
+            oid: commit.commit.tree
+        });
+        let parentTree = await commit.getParents()[0]?.getTree({
+            fs,
+            dir,
+            gitdir,
+            oid: commit.getParents()[0]?.commit.tree
+        });
         let diffs = await commit.getDiff();
         let patches = [];
         for (let diff of diffs) {
