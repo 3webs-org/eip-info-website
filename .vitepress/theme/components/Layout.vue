@@ -1,6 +1,8 @@
 <script setup>
 import DefaultTheme from 'vitepress/theme';
 
+import ReloadPrompt from './ReloadPrompt.vue';
+
 import EipCitation from './EipCitation.vue';
 import EipPreamble from './EipPreamble.vue';
 
