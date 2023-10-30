@@ -74,7 +74,7 @@ let allCommits = [];
 let canSkipEip = {}; // Set to true once we've got all the data we need for an EIP
 
 for (let repoPath of repoPaths) {
-    let EIPRepo = await Git.Repository.open(`./.git/modules/${repoPath}`);
+    let repo = await Git.Repository.open(`./.git/modules/${repoPath}`);
 
     let commit = await repo.getHeadCommit();
 
