@@ -1,6 +1,8 @@
 import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
 import Git from 'nodegit';
+import fs from 'fs/promises';
+import options from './options';
 
 // Generate js-yaml engine that will never throw an error
 
@@ -35,9 +37,8 @@ let yamlEngine = (str) => {
 // Helpers
 
 function getEipNumber(file) {
-    if (!file.startsWith('EIPS/')) return null; // Ignore non-EIP files
-    let eip = file.match(/(?<=eip-)\w+(?=(?:.\w+)$)/gi)?.pop();
-    return eip;
+    // Get regex match
+    return options.regexes.eip.exec(file)?.[0];
 }
 
 function formatDateString(date) {
@@ -52,38 +53,47 @@ function formatDateStringSlashSeperated(date) {
 
 async function parseAuthorData(authorData) {
     let authors = [];
-    let rawAuthorRegex = authorData.match(/(?<=^|,\s*)[^\s]([^,"]|".*")+(?=(?:$|,))/g);
+    let rawAuthorRegex = [...authorData.matchAll(options.regexes.author)];
     await Promise.all(rawAuthorRegex.map(async (author) => {
-        let authorName = author.match(/(?<![(<].*)[^\s(<][^(<]*\w/g);
-        let emailData = author.match(/(?<=\<).*(?=\>)/g);
-        let githubData = author.match(/(?<=\(@)[\w-]+(?=\))/g);
-        let authorObj = {
-            name: authorName.pop()
-        };
-        if (emailData) authorObj.email = emailData.pop();
-        if (githubData) authorObj.github = githubData.pop();
-        authors.push(authorObj);
+        authors.push({
+            name: author[1],
+            githubData: author[2],
+            emailData: author[3]
+        });
     }));
     return authors;
 }
 
-let repo = await Git.Repository.open("./.git/modules/EIPs");
-
 let eipInfo = {}; // EIP "number" => gray-matter data and content
 let aliases = {}; // Alias => EIP "number"
 
-let canSkipEip = {}; // Set to true once we've got all the data we need for an EIP
-
-let commit = await repo.getHeadCommit();
+let repoPaths = await fs.readdir('./.git/modules');
 
 let allCommits = [];
-while (commit) {
-    allCommits.push(commit);
-    commit = await commit.getParents().then(parents => parents[0]);
+
+let canSkipEip = {}; // Set to true once we've got all the data we need for an EIP
+
+for (let repoPath of repoPaths) {
+    let repo = await Git.Repository.open(`./.git/modules/${repoPath}`);
+
+    let commit = await repo.getHeadCommit();
+
+    while (commit) {
+        allCommits.push([repo, commit]);
+        commit = await commit.getParents().then(parents => parents[0]);
+    }
 }
 
+// Sort by date, newest first
+allCommits.sort((a, b) => b[1].date() - a[1].date());
+
+console.dir(allCommits.map(([repo, commit]) => { return {
+    message: commit.message(),
+    date: commit.date(),
+}; }), { depth: null })
+
 // Walk it back
-for (commit of allCommits) {
+for (let [repo, commit] of allCommits) {
     try {
         // Get the changes made in this commit
         let diffs = await commit.getDiff();
@@ -102,7 +112,7 @@ for (commit of allCommits) {
         let modified = patches.filter(patch => patch.isModified() && !patch.isAdded() && !patch.isDeleted());
         if (added.length == 1 && deleted.length == 1) {
             // Make sure they are both EIPs!
-            if (getEipNumber(added[0].newFile().path()) && getEipNumber(deleted[0].oldFile().path())) {
+            if (getEipNumber(added[0].newFile().path()) && getEipNumber(deleted[0].oldFile().path()) && getEipNumber(added[0].newFile().path()) != getEipNumber(deleted[0].oldFile().path())) {
                 // Make a fake patch that "renames" the deleted file to the added file
                 let theOldFile = deleted[0].oldFile();
                 let patch = added[0];
@@ -150,6 +160,8 @@ for (commit of allCommits) {
                 });
 
                 if (gmNew == null) return; // An error occurred while parsing the yaml, skip this file
+
+                if (gmNew.data['status'] == 'Moved') return; // Skip stubs
 
                 let needFetchOld = !isAdded && (!gmNew.data['last-status-change'] || (['Final', 'Living'].includes(gmNew.data['status']) && !gmNew.data['finalized']));
 
@@ -279,8 +291,15 @@ for (let eip in eipInfo) {
             // ../assets/eip-<eip>/<assetPa/th>
             let assetPath = `../public/eip/${eip}/${match[2].substring(15 + eip.length)}`;
             content = content.replace(match[0], `[${match[1]}](${assetPath})`);
+        } else if (match[2].toLowerCase().startsWith("../assets/erc-")) {
+            // ../assets/eip-<eip>/<assetPa/th>
+            let assetPath = `../public/eip/${eip}/${match[2].substring(15 + eip.length)}`;
+            content = content.replace(match[0], `[${match[1]}](${assetPath})`);
         } else if (match[2].startsWith("./eip-")) {
             let linkedEip = match[2].split('eip-')[1].split('.')[0];
+            content = content.replace(match[0], `[${match[1]}](./${linkedEip}.md)`);
+        } else if (match[2].startsWith("./erc-")) {
+            let linkedEip = match[2].split('erc-')[1].split('.')[0];
             content = content.replace(match[0], `[${match[1]}](./${linkedEip}.md)`);
         } else if (match[2].startsWith("../LICENSE")) {
             content = content.replace(match[0], `[${match[1]}](../LICENSE.md)`);
