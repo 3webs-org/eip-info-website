@@ -87,6 +87,8 @@ for (let repoPath of repoPaths) {
 // Sort by date, newest first
 allCommits.sort((a, b) => b[1].date() - a[1].date());
 
+console.dir(allCommits, { depth: null })
+
 // Walk it back
 for (let [repo, commit] of allCommits) {
     try {
