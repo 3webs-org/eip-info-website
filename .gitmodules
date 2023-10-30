@@ -2,3 +2,7 @@
 	path = EIPs
 	url = https://github.com/ethereum/EIPS.git
 	branch = master
+[submodule "ERCs"]
+	path = ERCs
+	url = https://github.com/ethereum/ERCs.git
+	branch = master
