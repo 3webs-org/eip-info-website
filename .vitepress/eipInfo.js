@@ -79,16 +79,16 @@ for (let repoPath of repoPaths) {
     let commit = await repo.getHeadCommit();
 
     while (commit) {
-        allCommits.push(commit);
+        allCommits.push([repo, commit]);
         commit = await commit.getParents().then(parents => parents[0]);
     }
 }
 
 // Sort by date, oldest first
-allCommits.sort((a, b) => a.date() - b.date());
+allCommits.sort((a, b) => a[1].date() - b[1].date());
 
 // Walk it back
-for (let commit of allCommits) {
+for (let [repo, commit] of allCommits) {
     try {
         // Get the changes made in this commit
         let diffs = await commit.getDiff();
