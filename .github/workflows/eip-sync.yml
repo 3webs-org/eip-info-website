@@ -42,7 +42,7 @@ jobs:
             if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
             with:
                 token: "${{ steps.fetch_jwt.outputs.token }}"
-                path: EIPs
+                path: ERCs
                 ref: master
                 pr_branch: ercs-automated-submodule-update
                 target_branch: main
