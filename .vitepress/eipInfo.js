@@ -161,7 +161,7 @@ for (let [repo, commit] of allCommits) {
 
                 if (gmNew == null) return; // An error occurred while parsing the yaml, skip this file
 
-                if (gmNew.data['status'] == 'Moved') return; // Skip files that have been moved
+                if (gmNew.data['status'] == 'Moved') return; // Skip stubs
 
                 let needFetchOld = !isAdded && (!gmNew.data['last-status-change'] || (['Final', 'Living'].includes(gmNew.data['status']) && !gmNew.data['finalized']));
 
@@ -174,8 +174,6 @@ for (let [repo, commit] of allCommits) {
                             yaml: yamlEngine
                         }
                     });
-
-                    if (gmOld.data['status'] == 'Moved') return; // Skip files that have been moved
                 }
 
                 let canUseOld = isAdded || gmOld != null;
