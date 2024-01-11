@@ -57,7 +57,7 @@ jobs:
 
           - name: Setup Pages
             if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-            uses: actions/configure-pages@f156874f8191504dae5b037505266ed5dda6c382 # v3.0.6
+            uses: actions/configure-pages@1f0c5cde4bc74cd7e1254d0cb4de8d49e9068c7d # v4.0.0
 
           - name: Upload artifact
             uses: actions/upload-pages-artifact@0252fc4ba7626f0298f0cf00902a25c6afc77fa8 # v3.0.0
