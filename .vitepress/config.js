@@ -31,8 +31,9 @@ async function preBuild() {
     // Clear src/public/eip
     await fs.rm('./src/public/eip', { recursive: true, force: true });
     // Copy EIP assets (EIPs/assets/eip-<eip>/<pa/th>) to src/public/eip/<eip>/<pa/th>
-    let allAssets = await recursiveReadDir('./EIPs/assets');
-    await Promise.all(allAssets.map(async asset => {
+    let allEIPAssets = await recursiveReadDir('./EIPs/assets');
+    let allERCAssets = await recursiveReadDir('./ERCs/assets');
+    await Promise.all(allEIPAssets.map(async asset => {
         let eip = asset.split('/')[0].replace('eip-', '');
         let assetPath = asset.split('/').slice(1).join('/');
         let assetPathParent = assetPath.split('/').slice(0, -1).join('/');
@@ -41,7 +42,16 @@ async function preBuild() {
         }
         await fs.mkdir(`./src/public/eip/${eip}/${assetPathParent}`, { recursive: true });
         await fs.copyFile(`./EIPs/assets/${asset}`, `./src/public/eip/${eip}/${assetPath}`);
-    }));
+    }).concat(allERCAssets.map(async asset => {
+        let eip = asset.split('/')[0].replace('erc-', '');
+        let assetPath = asset.split('/').slice(1).join('/');
+        let assetPathParent = assetPath.split('/').slice(0, -1).join('/');
+        if (!(eip in eips)) {
+            return; // Skip if EIP not found (e.g. assets/css)
+        }
+        await fs.mkdir(`./src/public/eip/${eip}/${assetPathParent}`, { recursive: true });
+        await fs.copyFile(`./ERCs/assets/${asset}`, `./src/public/eip/${eip}/${assetPath}`);
+    })));
 }
 
 await preBuild();
