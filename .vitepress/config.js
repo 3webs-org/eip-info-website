@@ -176,7 +176,10 @@ export default withPwa(defineConfig({
                         'description': pageData.description,
                         '@context': 'https://schema.org'
                     })]
-                ].filter(x => x?.length);
+                ].filter(x => x?.length == 2).map(x => [x[0], Object.keys(x[1]).reduce((prev, curr) => {
+                  if (x[1][curr] != undefined) prev[curr] = x[1][curr].toString();
+                  return prev;
+                }, {})]);
             } else {
                 return [];
             }
