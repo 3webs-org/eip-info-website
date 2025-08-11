@@ -1,6 +1,7 @@
 import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
-import Git from 'nodegit';
+import git, { add } from 'isomorphic-git';
+import http from 'node:http';
 import fs from 'fs/promises';
 import options from './options';
 
@@ -64,6 +65,155 @@ async function parseAuthorData(authorData) {
     return authors;
 }
 
+async function getFileStateChanges({
+    fs,
+    dir = undefined,
+    gitdir,
+    treeCurr,
+    treePrev,
+    textHeuristic = content => content.slice(0, Math.max(Math.min(8000, content.length - 1), 0)).every(x => x !== 0),
+    decoder = new TextDecoder("utf-8"),
+}) {
+    if (treePrev != undefined) {
+        let initialResult = await git.walk({
+            fs,
+            dir,
+            gitdir,
+            trees: [treeCurr, treePrev],
+            map: async function(path, [curr, prev]) {
+                // ignore directories
+                let typePromises = await Promise.all([
+                    curr ? curr.type() : new Promise(resolve => resolve(undefined)),
+                    prev ? prev.type() : new Promise(resolve => resolve(undefined)),
+                ]);
+                if (path === '.' || typePromises[0] !== 'blob' || typePromises[1] !== 'blob') return undefined;
+
+                // Detect additions or removals
+                if (!curr) return {
+                    type: 'remove',
+                    currPath: undefined,
+                    prevPath: path,
+                    curr: undefined,
+                    prev,
+                };
+                if (!prev) return {
+                    type: 'add',
+                    currPath: path,
+                    prevPath: undefined,
+                    curr,
+                    prev: undefined,
+                };
+
+                // no change, no modification
+                let contentPromises = await Promise.all([curr.content(), prev.content()]);
+                if (contentPromises[0] === contentPromises[1]) return undefined;
+    
+                // There's been a change
+                return {
+                    type: 'modify',
+                    currPath: path,
+                    prevPath: path,
+                    curr,
+                    prev,
+                };
+            },
+        });
+        let added = initialResult.filter(patch => patch.type === 'add');
+        let removed = initialResult.filter(patch => patch.type === 'remove');
+        let matches = {};
+        for (let { curr, currPath } of added) {
+            let currContent = await curr.content();
+            if (!textHeuristic(currContent)) return;
+            let currDecoded = decoder.decode(currContent);
+            let currLines = new Set(currDecoded.split('\n'));
+            for (let { prev, prevPath } of removed) {
+                let prevContent = await prev.content();
+                if (!textHeuristic(prevContent)) return;
+                let prevDecoded = decoder.decode(prevContent);
+                let prevLines = new Set(prevDecoded.split('\n'));
+
+                let intersection = currLines.intersection(prevLines);
+                let totalLines = currLines.size + prevLines.size - intersection.size;
+                let commonLines = intersection.size;
+                let sharedFraction = commonLines / totalLines;
+
+                if (sharedFraction >= 0.5) {
+                    if (!(currPath in matches)) {
+                        matches[currPath] = new Set()
+                    }
+                    matches[currPath].add({
+                        prevPath,
+                        sharedFraction,
+                        curr,
+                        prev,
+                    });
+                }
+            }
+        }
+        // Greedy: pick highest sharedFraction
+        let finalResult = [];
+        let currPathsMatched = new Set();
+        let prevPathsMatched = new Set();
+        while (Object.keys(matches).length !== 0) {
+            let bestCurrPath = undefined, bestPrevPath = undefined, bestCurr, bestPrev, bestSharedFraction = 0;
+            for (let currPath of Object.keys(matches)) {
+                for (let { prevPath, sharedFraction, curr, prev } of matches[currPath]) {
+                    if (sharedFraction > bestSharedFraction) {
+                        bestPrevPath = prevPath;
+                        bestCurrPath = currPath;
+                        bestCurr = curr;
+                        bestPrev = prev;
+                        bestSharedFraction = sharedFraction;
+                    }
+                }
+            }
+            if (bestCurrPath == undefined) break;
+            currPathsMatched.add(bestCurrPath);
+            prevPathsMatched.add(bestPrevPath);
+            delete matches[bestCurrPath];
+            for (let currPath of Object.keys(matches)) {
+                matches[currPath] = new Set([...matches[currPath]].filter(itm => itm.prevPath !== bestPrevPath));
+            }
+            finalResult.push({
+                type: 'renamed',
+                currPath: bestCurrPath,
+                prevPath: bestPrevPath,
+                curr: bestCurr,
+                prev: bestPrev,
+            });
+        }
+        for (let itm of initialResult) {
+            if (itm.currPath in currPathsMatched) continue;
+            if (itm.prevPath in prevPathsMatched) continue;
+            finalResult.push(itm);
+        }
+
+        return finalResult;
+    } else {
+        return git.walk({
+            fs,
+            dir,
+            gitdir,
+            trees: [treeCurr],
+            map: async function(path, [curr]) {
+                // ignore directories
+                if (
+                    path === '.' ||
+                    (curr && await curr.type().then(type => type !== 'blob'))
+                ) return undefined;
+
+                return {
+                    type: 'add',
+                    currPath: path,
+                    prevPath: undefined,
+                    curr,
+                    prev: undefined
+                };
+            },
+        });
+    }
+}
+
 let eipInfo = {}; // EIP "number" => gray-matter data and content
 let aliases = {}; // Alias => EIP "number"
 
@@ -74,85 +224,69 @@ let allCommits = [];
 let canSkipEip = {}; // Set to true once we've got all the data we need for an EIP
 
 for (let repoPath of repoPaths) {
-    let repo = await Git.Repository.open(`./.git/modules/${repoPath}`);
+    let gitdir = `./.git/modules/${repoPath}`;
 
-    let commit = await repo.getHeadCommit();
+    let commit = await git.log({
+        fs,
+        gitdir,
+        depth: 1,
+    }).then(res => res[0]);
 
-    while (commit) {
-        allCommits.push([repo, commit]);
-        commit = await commit.getParents().then(parents => parents[0]);
-    }
+    do {
+        allCommits.push([repoPath, commit]);
+        commit = await git.readCommit({
+            fs,
+            gitdir,
+            oid: commit.commit.parent[0]
+        });
+    } while (commit.commit.parent.length > 0)
 }
 
-// Sort by date, newest first
-allCommits.sort((a, b) => b[1].date() - a[1].date());
-
-console.dir(allCommits.map(([repo, commit]) => { return {
-    message: commit.message(),
-    date: commit.date(),
-}; }), { depth: null })
-
 // Walk it back
-for (let [repo, commit] of allCommits) {
-    try {
-        // Get the changes made in this commit
-        let diffs = await commit.getDiff();
-        let patches = [];
-        for (let diff of diffs) {
-            patches.push(...(await diff.patches()));
-        }
+let decoder = new TextDecoder("utf-8");
+for (let [repoPath, commit] of allCommits) {
+    let gitdir = `./.git/modules/${repoPath}`;
 
+    let patches = await getFileStateChanges({
+        fs,
+        gitdir,
+        treeCurr: git.TREE({ ref: commit.oid }),
+        treePrev: commit.commit.parent.length > 0 ? git.TREE({ ref: commit.commit.parent[0] }) : undefined,
+    });
+
+    try {
         // Alias management
         // If 1 delete and 1 add, add an alias from the deleted file to the added file
         // If rename, add an alias from the old file to the new file
         // If delete, add an alias to null
-        let added = patches.filter(patch => patch.isAdded());
-        let deleted = patches.filter(patch => patch.isDeleted());
-        let renamed = patches.filter(patch => patch.isRenamed());
-        let modified = patches.filter(patch => patch.isModified() && !patch.isAdded() && !patch.isDeleted());
-        if (added.length == 1 && deleted.length == 1) {
-            // Make sure they are both EIPs!
-            if (getEipNumber(added[0].newFile().path()) && getEipNumber(deleted[0].oldFile().path()) && getEipNumber(added[0].newFile().path()) != getEipNumber(deleted[0].oldFile().path())) {
-                // Make a fake patch that "renames" the deleted file to the added file
-                let theOldFile = deleted[0].oldFile();
-                let patch = added[0];
-                patch.oldFile = () => theOldFile;
-                patch.isRenamed = () => true;
-                patch.isModified = () => true;
-                patch.isAdded = () => false;
-                patch.isDeleted = () => false;
-                patch.status = () => 0;
-                renamed.push(patch);
-                added = [];
-                deleted = [];
-            }
-        }
+        let added = patches.filter(patch => patch.type === 'add');
+        let deleted = patches.filter(patch => patch.type === 'remove');
+        let renamed = patches.filter(patch => patch.type === 'rename');
+        let modified = patches.filter(patch => patch.type === 'modifiy');
         for (let patch of deleted) {
-            let oldEip = getEipNumber(patch.newFile().path());
+            let oldEip = getEipNumber(patch.currPath);
             if (oldEip && !(oldEip in aliases)) aliases[oldEip] = null;
         }
         for (let patch of renamed) {
-            let oldEip = getEipNumber(patch.oldFile().path());
-            let newEip = getEipNumber(patch.newFile().path());
+            let oldEip = getEipNumber(patch.prevPath);
+            let newEip = getEipNumber(patch.currPath);
             if (oldEip == newEip) continue; // Ignore renames that don't change the EIP number, if this ever happens
             if (oldEip && !(oldEip in aliases)) aliases[oldEip] = newEip;
         }
         // Process the files
         await Promise.all(added.concat(modified).map(async (patch) => {
-            let eip = getEipNumber(patch.newFile().path());
+            let eip = getEipNumber(patch.currPath);
             while (eip in aliases) {
                 eip = aliases[eip];
             }
             if (canSkipEip[eip]) return; // We've already got all the data we need for this EIP
-            let isAdded = patch.isAdded();
+            let isAdded = patch === 'add';
             if (eip) {
                 // Initialize the gray matter data
                 let gmNew, gmOld = null;
 
                 // Read both files' contents
-                let objectIdNew = patch.newFile().id();
-                let blobNew = await repo.getBlob(objectIdNew);
-                let contentNew = blobNew.toString();
+                let contentNew = decoder.decode(await patch.curr.content());
                 gmNew = grayMatter(contentNew, {
                     engines: {
                         yaml: yamlEngine
@@ -166,9 +300,7 @@ for (let [repo, commit] of allCommits) {
                 let needFetchOld = !isAdded && (!gmNew.data['last-status-change'] || (['Final', 'Living'].includes(gmNew.data['status']) && !gmNew.data['finalized']));
 
                 if (needFetchOld) {
-                    let objectIdOld = patch.oldFile().id();
-                    let blobOld = await repo.getBlob(objectIdOld);
-                    let contentOld = blobOld.toString();
+                    let contentOld = decoder.decode(await patch.prev.content());
                     gmOld = grayMatter(contentOld, {
                         engines: {
                             yaml: yamlEngine
@@ -189,8 +321,9 @@ for (let [repo, commit] of allCommits) {
                     'last-status-change': gmNew.data['status'] != gmOld?.data?.['status'] && canUseOld,
                     'finalized': ['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld?.data?.['status'])) && canUseOld,
                 };
-                let theDate = commit.date();
-                let theSha = commit.sha();
+                let theDate = new Date();
+                theDate.setTime(commit.commit.committer.timestamp * 1000);
+                let theSha = commit.oid;
                 for (let prop in datesToAdd) {
                     if (datesToAdd[prop] && !(prop in data)) data[prop] = theDate;
                     if (datesToAdd[prop] && !(`${prop}-commit` in data)) data[`${prop}-commit`] = theSha;
@@ -217,18 +350,17 @@ for (let [repo, commit] of allCommits) {
         // Add debugging info
 
         // Include commit printout
-        console.error(`Commit: ${commit.sha()}`);
-        console.error(`Author: ${commit.author().name()} <${commit.author().email()}>`);
-        console.error(`Date: ${commit.date()}`);
-        console.error(`Message: ${commit.message()}`);
+        console.error(`Commit: ${commit.oid}`);
+        console.error(`Author: ${commit.commit.author.name} <${commit.commit.author.email}>`);
+        console.error(`Date: ${commit.commit.committer.timestamp}`);
+        console.error(`Message: ${commit.commit.message}`);
 
         // Get list of changed files
-        let diffs = await commit.getDiff();
-        for (let diff of diffs) {
+        for (let patch of patches) {
             for (let patch of await diff.patches()) {
-                console.error(`New File: ${patch.newFile()?.path()}`);
-                console.error(`Old File: ${patch.oldFile()?.path()}`);
-                console.error(`Type: ${patch.isAdded() ? 'Added' : patch.isDeleted() ? 'Deleted' : patch.isRenamed() ? 'Renamed' : patch.isCopied() ? 'Copied' : patch.isModified() ? 'Modified' : 'Unknown'}`);
+                console.error(`New File: ${patch.currPath}`);
+                console.error(`Old File: ${patch.prevPath}`);
+                console.error(`Type: ${patch.type}`);
             }
         }
 
