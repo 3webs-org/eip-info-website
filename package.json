@@ -20,7 +20,7 @@
   "dependencies": {
     "@vite-pwa/vitepress": "^1.0.0",
     "cross-env": "^10.0.0",
-    "feed": "^4.2.2",
+    "feed": "^5.0.0",
     "gray-matter": "^4.0.3",
     "isomorphic-git": "^1.24.5",
     "js-yaml": "^4.1.0",
