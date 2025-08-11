@@ -1,7 +1,6 @@
 import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
-import git, { add } from 'isomorphic-git';
-import http from 'node:http';
+import git from 'isomorphic-git';
 import fs from 'fs/promises';
 import options from './options';
 
@@ -69,6 +68,7 @@ async function getFileStateChanges({
     fs,
     dir = undefined,
     gitdir,
+    cache = {},
     treeCurr,
     treePrev,
     textHeuristic = content => content.slice(0, Math.max(Math.min(8000, content.length - 1), 0)).every(x => x !== 0),
@@ -79,6 +79,7 @@ async function getFileStateChanges({
             fs,
             dir,
             gitdir,
+            cache,
             trees: [treeCurr, treePrev],
             map: async function(path, [curr, prev]) {
                 // ignore directories
@@ -105,8 +106,7 @@ async function getFileStateChanges({
                 };
 
                 // no change, no modification
-                let contentPromises = await Promise.all([curr.content(), prev.content()]);
-                if (contentPromises[0] === contentPromises[1]) return undefined;
+                if (await curr.oid() == await prev.oid()) return undefined;
     
                 // There's been a change
                 return {
@@ -194,6 +194,7 @@ async function getFileStateChanges({
             fs,
             dir,
             gitdir,
+            cache,
             trees: [treeCurr],
             map: async function(path, [curr]) {
                 // ignore directories
@@ -223,33 +224,48 @@ let allCommits = [];
 
 let canSkipEip = {}; // Set to true once we've got all the data we need for an EIP
 
+let cache = {};
+
 for (let repoPath of repoPaths) {
     let gitdir = `./.git/modules/${repoPath}`;
 
     let commit = await git.log({
         fs,
         gitdir,
+        cache,
         depth: 1,
     }).then(res => res[0]);
 
     do {
-        allCommits.push([repoPath, commit]);
+        let theDate = new Date();
+        theDate.setTime(commit.commit.committer.timestamp * 1000);
+        allCommits.push([repoPath, commit, theDate]);
         commit = await git.readCommit({
             fs,
             gitdir,
-            oid: commit.commit.parent[0]
+            cache,
+            oid: commit.commit.parent[0],
         });
     } while (commit.commit.parent.length > 0)
 }
 
+allCommits.sort((a, b) => b[2].getTime() - a[2].getTime());
+
 // Walk it back
 let decoder = new TextDecoder("utf-8");
-for (let [repoPath, commit] of allCommits) {
+let i = 0;
+for (let [repoPath, commit, commitDate] of allCommits) {
+    if (i % 100 == 0) {
+        console.log(`Done ${i} / ${allCommits.length} (${i / allCommits.length * 100}%)`)
+    }
+    i++;
+
     let gitdir = `./.git/modules/${repoPath}`;
 
     let patches = await getFileStateChanges({
         fs,
         gitdir,
+        cache,
         treeCurr: git.TREE({ ref: commit.oid }),
         treePrev: commit.commit.parent.length > 0 ? git.TREE({ ref: commit.commit.parent[0] }) : undefined,
     });
@@ -280,7 +296,7 @@ for (let [repoPath, commit] of allCommits) {
                 eip = aliases[eip];
             }
             if (canSkipEip[eip]) return; // We've already got all the data we need for this EIP
-            let isAdded = patch === 'add';
+            let isAdded = patch.type === 'add';
             if (eip) {
                 // Initialize the gray matter data
                 let gmNew, gmOld = null;
@@ -321,11 +337,9 @@ for (let [repoPath, commit] of allCommits) {
                     'last-status-change': gmNew.data['status'] != gmOld?.data?.['status'] && canUseOld,
                     'finalized': ['Final', 'Living'].includes(gmNew.data['status']) && !(['Final', 'Living'].includes(gmOld?.data?.['status'])) && canUseOld,
                 };
-                let theDate = new Date();
-                theDate.setTime(commit.commit.committer.timestamp * 1000);
                 let theSha = commit.oid;
                 for (let prop in datesToAdd) {
-                    if (datesToAdd[prop] && !(prop in data)) data[prop] = theDate;
+                    if (datesToAdd[prop] && !(prop in data)) data[prop] = commitDate;
                     if (datesToAdd[prop] && !(`${prop}-commit` in data)) data[`${prop}-commit`] = theSha;
                 }
 
