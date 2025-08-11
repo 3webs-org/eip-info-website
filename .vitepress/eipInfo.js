@@ -2,7 +2,44 @@ import grayMatter from 'gray-matter';
 import yaml from 'js-yaml';
 import git from 'isomorphic-git';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import options from './options';
+import path from 'path';
+import os from 'os';
+
+const cacheBaseDir = process.env.XDG_CACHE_HOME
+  ? path.join(process.env.XDG_CACHE_HOME, 'eip-info-cache')
+  : path.join(os.homedir(), '.cache', 'eip-info-cache');
+
+await fs.mkdir(cacheBaseDir, { recursive: true });
+
+function getCacheFilePath(oid) {
+  const cacheDir = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  return path.join(cacheDir, 'eip-info-cache', `commit-${oid}.yaml`);
+}
+
+async function loadCommitFromCache(oid) {
+  const filePath = getCacheFilePath(oid);
+  if (!fsSync.existsSync(filePath)) return null;
+  try {
+    const yamlStr = await fs.readFile(filePath, 'utf8');
+    return load(yamlStr);
+  } catch (err) {
+    throw err;
+  }
+}
+
+async function saveCommitToCache(oid, eipInfo) {
+  const filePath = getCacheFilePath(oid);
+  try {
+    await fs.writeFile(filePath, yaml.dump(eipInfo))
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return null;
+    }
+    throw err;
+  }
+}
 
 // Generate js-yaml engine that will never throw an error
 
@@ -251,6 +288,28 @@ for (let repoPath of repoPaths) {
 
 allCommits.sort((a, b) => b[2].getTime() - a[2].getTime());
 
+function mergeDeep(target, source) {
+  for (const key in source) {
+    if (source.hasOwnProperty(key)) {
+      if (
+        typeof source[key] === 'object' &&
+        source[key] !== null &&
+        !Array.isArray(source[key]) &&
+        typeof target[key] === 'object' &&
+        target[key] !== null &&
+        !Array.isArray(target[key])
+      ) {
+        mergeDeep(target[key], source[key]);
+      } else {
+        if (!(key in target)) {
+          target[key] = source[key];
+        }
+      }
+    }
+  }
+  return target;
+}
+
 // Walk it back
 let decoder = new TextDecoder("utf-8");
 let i = 0;
@@ -259,6 +318,13 @@ for (let [repoPath, commit, commitDate] of allCommits) {
         console.log(`Done ${i} / ${allCommits.length} (${i / allCommits.length * 100}%)`)
     }
     i++;
+
+    let cached = await loadCommitFromCache(commit.oid);
+    if (cached) {
+        console.log(`Got cached for commit ${commit.oid}`);
+        mergeDeep(eipInfo, cached);
+        break;
+    }
 
     let gitdir = `./.git/modules/${repoPath}`;
 
@@ -275,10 +341,10 @@ for (let [repoPath, commit, commitDate] of allCommits) {
         // If 1 delete and 1 add, add an alias from the deleted file to the added file
         // If rename, add an alias from the old file to the new file
         // If delete, add an alias to null
-        let added = patches.filter(patch => patch.type === 'add');
-        let deleted = patches.filter(patch => patch.type === 'remove');
-        let renamed = patches.filter(patch => patch.type === 'rename');
-        let modified = patches.filter(patch => patch.type === 'modifiy');
+        let added = patches.filter(patch => patch.type == 'add');
+        let deleted = patches.filter(patch => patch.type == 'remove');
+        let renamed = patches.filter(patch => patch.type == 'rename');
+        let modified = patches.filter(patch => patch.type == 'modify');
         for (let patch of deleted) {
             let oldEip = getEipNumber(patch.currPath);
             if (oldEip && !(oldEip in aliases)) aliases[oldEip] = null;
@@ -371,17 +437,17 @@ for (let [repoPath, commit, commitDate] of allCommits) {
 
         // Get list of changed files
         for (let patch of patches) {
-            for (let patch of await diff.patches()) {
-                console.error(`New File: ${patch.currPath}`);
-                console.error(`Old File: ${patch.prevPath}`);
-                console.error(`Type: ${patch.type}`);
-            }
+            console.error(`New File: ${patch.currPath}`);
+            console.error(`Old File: ${patch.prevPath}`);
+            console.error(`Type: ${patch.type}`);
         }
 
         // Re-throw
         throw e;
     }
 }
+
+// await saveCommitToCache(allCommits[0][1].oid, eipInfo);
 
 // Now make the necessary transformations
 for (let eip in eipInfo) {
