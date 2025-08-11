@@ -18,7 +18,7 @@
   },
   "homepage": "https://eips.ethereum.org/",
   "dependencies": {
-    "@vite-pwa/vitepress": "^0.5.0",
+    "@vite-pwa/vitepress": "^1.0.0",
     "cross-env": "^10.0.0",
     "feed": "^4.2.2",
     "gray-matter": "^4.0.3",
