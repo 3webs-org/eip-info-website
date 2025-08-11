@@ -275,6 +275,7 @@ for (let eip in eipInfo) {
 }
 
 delete eipInfo['2535'] // Doesn't use relative links.
+delete eipInfo['7818'] // README in assets doesn't work properly
 
 delete eipInfo['777']  // Could not resolve "./../assets/eip-777/logo/png/ERC-777-logo-beige-48px.png" from "src/eip/777.md"
 delete eipInfo['1822'] // Could not resolve "../assets/eip-1822/proxy-diagram.png" from "src/eip/1822.md"
