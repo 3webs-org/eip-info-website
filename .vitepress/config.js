@@ -137,7 +137,7 @@ export default withPwa(defineConfig({
                     [ 'title', {}, frontmatter.title ]
                     [ 'meta', { name: 'description', content: pageData.description }],
                     [ 'link', { rel: 'canonical', href: `https://eips.ethereum.org/${pageData.relativePath}` } ],
-                    ...frontmatter.author.map(author => [ 'meta', { name: 'author', content: author.name } ]),
+                    ...(frontmatter?.author?.map(author => [ 'meta', { name: 'author', content: author.name } ]) || []),
                     [ 'meta', { name: 'date', content: frontmatter['created-slash'] } ],
                     [ 'meta', { name: 'copyright', content: 'CC0 1.0 Universal (Public Domain)' } ],
                     // Open Graph
@@ -154,7 +154,7 @@ export default withPwa(defineConfig({
                     [ 'meta', { name: 'twitter:description', content: pageData.description } ],
                     // Dublin Core
                     [ 'meta', { name: 'DC.title', content: frontmatter.title } ],
-                    ...frontmatter.author.map(author => [ 'meta', { name: 'DC.creator', content: author.name } ]),
+                    ...(frontmatter?.author?.map(author => [ 'meta', { name: 'DC.creator', content: author.name } ]) || []),
                     [ 'meta', { name: 'DC.date', content: frontmatter['created-slash'] } ],
                     frontmatter.finalized ? [ 'meta', { name: 'DC.issued', content: frontmatter['finalized-slash'] } ] : [],
                     [ 'meta', { name: 'DC.format', content: 'text/html' } ],
@@ -163,7 +163,7 @@ export default withPwa(defineConfig({
                     [ 'meta', { name: 'DC.rights', content: 'CC0 1.0 Universal (Public Domain)' } ],
                     // Citation
                     [ 'meta', { name: 'citation_title', content: frontmatter.title } ],
-                    ...frontmatter.author.map(author => [ 'meta', { name: 'citation_author', content: author.name } ]),
+                    ...(frontmatter?.author?.map(author => [ 'meta', { name: 'citation_author', content: author.name } ]) || []),
                     [ 'meta', { name: 'citation_online_date', content: frontmatter['created-slash'] } ],
                     frontmatter.finalized ? [ 'meta', { name: 'citation_publication_date', content: frontmatter['finalized-slash'] } ] : [],
                     [ 'meta', { name: 'citation_technical_report_institution', content: siteData.title } ],
@@ -176,7 +176,10 @@ export default withPwa(defineConfig({
                         'description': pageData.description,
                         '@context': 'https://schema.org'
                     })]
-                ].filter(x => x?.length);
+                ].filter(x => x?.length == 2).map(x => [x[0], Object.keys(x[1]).reduce((prev, curr) => {
+                  if (x[1][curr] != undefined) prev[curr] = x[1][curr].toString();
+                  return prev;
+                }, {})]);
             } else {
                 return [];
             }
