@@ -1,6 +1,6 @@
 export default {
     "statuses": [
-        "Living", "Last Call", "Final", "Review", "Draft", "Stagnant", "Withdrawn", "Moved"
+        "Living", "Last Call", "Final", "Review", "Draft", "Stagnant", "Withdrawn", "Moved", "Abandoned"
     ],
     "types": [
         "Standards Track",

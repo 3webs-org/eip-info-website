@@ -23,7 +23,7 @@ async function loadCommitFromCache(oid) {
   if (!fsSync.existsSync(filePath)) return null;
   try {
     const yamlStr = await fs.readFile(filePath, 'utf8');
-    return load(yamlStr);
+    return yaml.load(yamlStr);
   } catch (err) {
     throw err;
   }
@@ -447,7 +447,7 @@ for (let [repoPath, commit, commitDate] of allCommits) {
     }
 }
 
-// await saveCommitToCache(allCommits[0][1].oid, eipInfo);
+await saveCommitToCache(allCommits[0][1].oid, eipInfo);
 
 // Now make the necessary transformations
 for (let eip in eipInfo) {
@@ -488,7 +488,7 @@ for (let eip in eipInfo) {
 
 delete eipInfo['2535'] // Doesn't use relative links.
 delete eipInfo['7818'] // README in assets doesn't work properly
-
+delete eipInfo['7888'] // Could not resolve "../assets/eip-7888/broadcasting.svg" from "src/eip/7888.md"
 delete eipInfo['777']  // Could not resolve "./../assets/eip-777/logo/png/ERC-777-logo-beige-48px.png" from "src/eip/777.md"
 delete eipInfo['1822'] // Could not resolve "../assets/eip-1822/proxy-diagram.png" from "src/eip/1822.md"
 delete eipInfo['3450'] // Could not resolve "./../assets/eip-3450/lagrange.gif" from "src/eip/3450.md"
