@@ -23,7 +23,7 @@
     "feed": "^4.2.2",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.0",
-    "nodegit": "^0.27.0",
+    "isomorphic-git": "^1.24.5",
     "vite-logger": "^0.0.1",
     "vitepress": "^1.0.0-beta.5",
     "vue": "^3.2.47"
