@@ -35,7 +35,7 @@ jobs:
                 target_branch: main
 
           - name: EIPs Submodule Auto Merge
-            uses: alexwilson/enable-github-automerge-action@56e3117d1ae1540309dc8f7a9f2825bc3c5f06ff # 2.0.0
+            uses: alexwilson/enable-github-automerge-action@2c32e18a76e0726ffe7a573bfff2d42a20885126 # 3.0.0
             if: github.event_name == 'pull_request_target' && github.head_ref == 'eips-automated-submodule-update' && github.event.pull_request.user.login == 'submodule-update[bot]'
             with:
                 github-token: "${{ steps.fetch_jwt.outputs.token }}"
@@ -51,7 +51,7 @@ jobs:
                 target_branch: main
 
           - name: ERCs Submodule Auto Merge
-            uses: alexwilson/enable-github-automerge-action@56e3117d1ae1540309dc8f7a9f2825bc3c5f06ff # 2.0.0
+            uses: alexwilson/enable-github-automerge-action@2c32e18a76e0726ffe7a573bfff2d42a20885126 # 3.0.0
             if: github.event_name == 'pull_request_target' && github.head_ref == 'ercs-automated-submodule-update' && github.event.pull_request.user.login == 'submodule-update[bot]'
             with:
                 github-token: "${{ steps.fetch_jwt.outputs.token }}"
